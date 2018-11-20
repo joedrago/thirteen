@@ -57,21 +57,26 @@ class Game
     @howto = 0
     @renderCommands = []
 
-    pickButtonSize = @aaHeight / 24
+    pickButtonSize = @aaHeight / 16
     pickTextSize = @aaHeight / 6
-    pickButtonDistance = pickButtonSize * 10
+    pickButtonDistance = pickButtonSize * 8
     pickButtonY = @center.y + (pickButtonSize * 2)
     @pickUI =
       pick: new Button this, ['sbutton0', 'sbutton1'], @font, pickButtonSize, @center.x - pickButtonDistance, pickButtonY, (click) =>
         if click
-          @hand.togglePicking()
+          if @hand.selectedCards().length > 0
+            @playPicked()
+          else
+            @hand.togglePicking()
         if @hand.picking
-          return 'Cancel'
-        return 'Pick'
-      play: new Button this, ['sbutton0', 'sbutton1'], @font, pickButtonSize, @center.x + pickButtonDistance, pickButtonY, (click) =>
-        if click
-          @playPicked()
-        return 'Play'
+          if @hand.selectedCards().length > 0
+            return 'Play'
+          return 'Pick'
+        return 'Reorg'
+      # play: new Button this, ['sbutton0', 'sbutton1'], @font, pickButtonSize, @center.x + pickButtonDistance, pickButtonY, (click) =>
+      #   if click
+      #     @playPicked()
+      #   return 'Play'
 
     @optionMenus =
       speeds: [
@@ -283,7 +288,7 @@ class Game
     if not @hand.picking
       return
     cards = @hand.selectedCards()
-    @hand.togglePicking()
+    # @hand.togglePicking()
     return @play(cards)
 
   # -----------------------------------------------------------------------------------------------------
@@ -329,8 +334,8 @@ class Game
 
     if @pickUI.pick.update(dt)
       updated = true
-    if @pickUI.play.update(dt)
-      updated = true
+    # if @pickUI.play.update(dt)
+    #   updated = true
 
     return updated
 
@@ -439,8 +444,8 @@ class Game
     if @thirteen.turn == 0
       if not @hand.wantsToPlayDraggedCard()
         @pickUI.pick.render()
-      if @hand.selectedCards().length > 0
-        @pickUI.play.render()
+      # if @hand.selectedCards().length > 0
+      #   @pickUI.play.render()
 
     # if (@thirteen.state == State.BID) and (@thirteen.turn == 0)
     #   @bidUI.minus.render()

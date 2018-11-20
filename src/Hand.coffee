@@ -83,7 +83,8 @@ class Hand
 
   set: (cards) ->
     @cards = cards.slice(0)
-    @picking = false
+    if @picking
+      @picked = new Array(@cards.length).fill(false)
     @syncAnims()
     @warp()
 
@@ -264,7 +265,8 @@ class Hand
       when Selected.NONE
         [1, 1, 1]
       when Selected.UNSELECTED
-        [0.3, 0.3, 0.3]
+        # [0.3, 0.3, 0.3]
+        [1, 1, 1]
       when Selected.SELECTED
         [0.5, 0.5, 0.9]
 
