@@ -12,6 +12,8 @@ class SpriteRenderer
       minus1:    { texture: "chars", x: 895, y: 820, w: 116, h: 118 }
       arrowL:    { texture: "chars", x:  33, y: 858, w: 204, h: 156 }
       arrowR:    { texture: "chars", x: 239, y: 852, w: 208, h: 155 }
+      sbutton0:  { texture: "chars", x: 505, y: 949, w: 133, h:  65 }
+      sbutton1:  { texture: "chars", x: 505, y: 870, w: 133, h:  65 }
 
       # menu backgrounds
       mainmenu:  { texture: "mainmenu",  x: 0, y: 0, w: 1280, h: 720 }

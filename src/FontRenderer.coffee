@@ -22,11 +22,17 @@ class FontRenderer
 
     totalWidth = 0
     totalHeight = metrics.height * scale
+
+    inColor = false
     for ch, i in str
-      code = ch.charCodeAt(0)
-      glyph = metrics.glyphs[code]
-      continue if not glyph
-      totalWidth += glyph.xadvance * scale
+      if ch == '`'
+        inColor = !inColor
+
+      if not inColor
+        code = ch.charCodeAt(0)
+        glyph = metrics.glyphs[code]
+        continue if not glyph
+        totalWidth += glyph.xadvance * scale
 
     return {
       w: totalWidth

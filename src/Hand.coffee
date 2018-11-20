@@ -10,9 +10,14 @@ CARD_RENDER_SCALE = 0.35                  # card height coefficient from the scr
 CARD_HAND_CURVE_DIST_FACTOR = 3.5         # factor with screen height to figure out center of arc. bigger number is less arc
 CARD_HOLDING_ROT_ORDER = Math.PI / 12     # desired rotation of the card when being dragged around for ordering's sake
 CARD_HOLDING_ROT_PLAY = -1 * Math.PI / 12 # desired rotation of the card when being dragged around with intent to play
-CARD_PLAY_CEILING = 0.65                  # how much of the top of the screen represents "I want to play this" vs "I want to reorder"
+CARD_PLAY_CEILING = 0.60                  # how much of the top of the screen represents "I want to play this" vs "I want to reorder"
 
 NO_CARD = -1
+
+Selected =
+  NONE: -1
+  UNSELECTED: 0
+  SELECTED: 1
 
 # taken from http://stackoverflow.com/questions/1211212/how-to-calculate-an-angle-from-three-points
 # uses law of cosines to figure out the hand arc angle
@@ -29,10 +34,22 @@ calcDistanceSquared = (x0, y0, x1, y1) ->
   return Math.pow(x1 - x0, 2) + Math.pow(y1 - y0, 2)
 
 class Hand
+  @CARD_IMAGE_W: CARD_IMAGE_W
+  @CARD_IMAGE_H: CARD_IMAGE_H
+  @CARD_IMAGE_OFF_X: CARD_IMAGE_OFF_X
+  @CARD_IMAGE_OFF_Y: CARD_IMAGE_OFF_Y
+  @CARD_IMAGE_ADV_X: CARD_IMAGE_ADV_X
+  @CARD_IMAGE_ADV_Y: CARD_IMAGE_ADV_Y
+  @CARD_RENDER_SCALE: CARD_RENDER_SCALE
+
   constructor: (@game) ->
     @cards = []
     @anims = {}
     @positionCache = {}
+
+    @picking = false
+    @picked = []
+    @pickPaint = false
 
     @dragIndexStart = NO_CARD
     @dragIndexCurrent = NO_CARD
@@ -59,8 +76,14 @@ class Hand
     @handAngleAdvanceMax = @handAngle / 7 # never space the cards more than what they'd look like with this handsize
     @game.log "Hand distance #{@handDistance}, angle #{@handAngle} (screen height #{@game.height})"
 
+  togglePicking: ->
+    @picking = !@picking
+    if @picking
+      @picked = new Array(@cards.length).fill(false)
+
   set: (cards) ->
     @cards = cards.slice(0)
+    @picking = false
     @syncAnims()
     @warp()
 
@@ -143,8 +166,29 @@ class Hand
         closestIndex = index
     @dragIndexCurrent = closestIndex
 
+  selectedCards: ->
+    if not @picking
+      return []
+
+    cards = []
+    for card, i in @cards
+      if @picked[i]
+        anim = @anims[card]
+        cards.push {
+          card: card
+          x: anim.cur.x
+          y: anim.cur.y
+          r: anim.cur.r
+          index: i
+        }
+    return cards
+
   down: (@dragX, @dragY, index) ->
     @up(@dragX, @dragY) # ensure we let go of the previous card in case the events are dumb
+    if @picking
+      @picked[index] = !@picked[index]
+      @pickPaint = @picked[index]
+      return
     @game.log "picking up card index #{index}"
     @dragIndexStart = index
     @dragIndexCurrent = index
@@ -166,7 +210,13 @@ class Hand
       anim = @anims[card]
       @dragIndexStart = NO_CARD
       @dragIndexCurrent = NO_CARD
-      @game.play card, anim.cur.x, anim.cur.y, anim.cur.r, cardIndex
+      @game.play [{
+        card: card
+        x: anim.cur.x
+        y: anim.cur.y
+        r: anim.cur.r
+        index: cardIndex
+      }]
     else
       @game.log "trying to reorder #{@cards[@dragIndexStart]} into index #{@dragIndexCurrent}"
       @cards = @calcDrawnHand() # is this right?
@@ -189,18 +239,39 @@ class Hand
       continue if v == NO_CARD
       anim = @anims[v]
       do (anim, index) =>
-        @renderCard v, anim.cur.x, anim.cur.y, anim.cur.r, 1, (clickX, clickY) =>
+        if @picking
+          if @picked[index]
+            selectedState = Selected.SELECTED
+          else
+            selectedState = Selected.UNSELECTED
+        else
+          if @wantsToPlayDraggedCard()
+            if (index == @dragIndexCurrent)
+              selectedState = Selected.SELECTED
+            else
+              selectedState = Selected.UNSELECTED
+          else
+            selectedState = Selected.NONE
+        @renderCard v, anim.cur.x, anim.cur.y, anim.cur.r, 1, selectedState, (clickX, clickY) =>
           @down(clickX, clickY, index)
 
-  renderCard: (v, x, y, rot, scale, cb) ->
+  renderCard: (v, x, y, rot, scale, selected, cb) ->
     rot = 0 if not rot
     rank = Math.floor(v / 4)
     suit = Math.floor(v % 4)
 
+    col = switch selected
+      when Selected.NONE
+        [1, 1, 1]
+      when Selected.UNSELECTED
+        [0.3, 0.3, 0.3]
+      when Selected.SELECTED
+        [0.5, 0.5, 0.9]
+
     @game.drawImage "cards",
     CARD_IMAGE_OFF_X + (CARD_IMAGE_ADV_X * rank), CARD_IMAGE_OFF_Y + (CARD_IMAGE_ADV_Y * suit), CARD_IMAGE_W, CARD_IMAGE_H,
     x, y, @cardWidth * scale, @cardHeight * scale,
-    rot, 0.5, 0.5, 1,1,1,1, cb
+    rot, 0.5, 0.5, col[0],col[1],col[2],1, cb
 
   calcPositions: (handSize) ->
     if @positionCache.hasOwnProperty(handSize)
@@ -230,11 +301,11 @@ class Hand
     @positionCache[handSize] = positions
     return positions
 
-  renderHand: ->
-    return if @hand.length == 0
-    for v,index in @hand
-      do (index) =>
-        @renderCard v, x, y, currentAngle, 1, (clickX, clickY) =>
-          @down(clickX, clickY, index)
+  # renderHand: ->
+  #   return if @hand.length == 0
+  #   for v,index in @hand
+  #     do (index) =>
+  #       @renderCard v, x, y, currentAngle, 1, Selected.NONE, (clickX, clickY) =>
+  #         @down(clickX, clickY, index)
 
 module.exports = Hand

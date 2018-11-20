@@ -57,20 +57,21 @@ class Game
     @howto = 0
     @renderCommands = []
 
-    # @bid = 0
-    # @bidButtonSize = @aaHeight / 8
-    # @bidTextSize = @aaHeight / 6
-    # bidButtonDistance = @bidButtonSize * 3
-    # @bidButtonY = @center.y - (@bidButtonSize)
-    # @bidUI = #(@game, @spriteNames, @font, @textHeight, @x, @y, @text, @cb)
-    #   minus: new Button this, ['minus0', 'minus1'], @font, @bidButtonSize, @center.x - bidButtonDistance, @bidButtonY, (click) =>
-    #     if click
-    #       @adjustBid(-1)
-    #     return ''
-    #   plus:  new Button this, ['plus0', 'plus1'],   @font, @bidButtonSize, @center.x + bidButtonDistance, @bidButtonY, (click) =>
-    #     if click
-    #       @adjustBid(1)
-    #     return ''
+    pickButtonSize = @aaHeight / 24
+    pickTextSize = @aaHeight / 6
+    pickButtonDistance = pickButtonSize * 10
+    pickButtonY = @center.y + (pickButtonSize * 2)
+    @pickUI =
+      pick: new Button this, ['sbutton0', 'sbutton1'], @font, pickButtonSize, @center.x - pickButtonDistance, pickButtonY, (click) =>
+        if click
+          @hand.togglePicking()
+        if @hand.picking
+          return 'Cancel'
+        return 'Pick'
+      play: new Button this, ['sbutton0', 'sbutton1'], @font, pickButtonSize, @center.x + pickButtonDistance, pickButtonY, (click) =>
+        if click
+          @playPicked()
+        return 'Play'
 
     @optionMenus =
       speeds: [
@@ -101,10 +102,6 @@ class Game
         if click
           @options.sortIndex = (@options.sortIndex + 1) % @optionMenus.sorts.length
         return @optionMenus.sorts[@options.sortIndex].text
-      # (click) =>
-      #   if click
-      #     @options.sound = !@options.sound
-      #   return "Sound: #{if @options.sound then "Enabled" else "Disabled"}"
       (click) =>
         if click
           @newGame()
@@ -133,10 +130,6 @@ class Game
         if click
           @options.sortIndex = (@options.sortIndex + 1) % @optionMenus.sorts.length
         return @optionMenus.sorts[@options.sortIndex].text
-      # (click) =>
-      #   if click
-      #     @options.sound = !@options.sound
-      #   return "Sound: #{if @options.sound then "Enabled" else "Disabled"}"
     ]
 
     @newGame()
@@ -213,29 +206,6 @@ class Game
       @hand.up(x, y)
 
   # -----------------------------------------------------------------------------------------------------
-  # bid handling
-
-  # adjustBid: (amount) ->
-  #   return if @thirteen == null
-  #   @bid = @bid + amount
-  #   if @bid < 0
-  #     @bid = 0
-  #   if @bid > @thirteen.tricks
-  #     @bid = @thirteen.tricks
-
-  # attemptBid: ->
-  #   return if @thirteen == null
-  #   @adjustBid(0)
-  #   if @thirteen.state == State.BID
-  #     if @thirteen.turn == 0
-  #       @log "bidding #{@bid}"
-  #       @lastErr = @thirteen.bid {
-  #         id: 1
-  #         bid: @bid
-  #         ai: false
-  #       }
-
-  # -----------------------------------------------------------------------------------------------------
   # headline (game state in top left)
 
   prettyErrorTable: {
@@ -293,16 +263,28 @@ class Game
   # -----------------------------------------------------------------------------------------------------
   # card handling
 
-  play: (cardToPlay, x, y, r, cardIndex) ->
-      @log "(game) playing card #{cardToPlay}"
-      ret = @thirteen.play {
-        id: 1
-        cards: [cardToPlay]
-      }
-      @lastErr = ret
-      if ret == OK
-        @hand.set @thirteen.players[0].hand
-        @pile.hint [cardToPlay], x, y, r
+  play: (cards) ->
+    console.log "(game) playing cards", cards
+
+    rawCards = []
+    for card in cards
+      rawCards.push card.card
+
+    ret = @thirteen.play {
+      id: 1
+      cards: rawCards
+    }
+    @lastErr = ret
+    if ret == OK
+      @hand.set @thirteen.players[0].hand
+      # @pile.hint [cardToPlay], x, y, r
+
+  playPicked: ->
+    if not @hand.picking
+      return
+    cards = @hand.selectedCards()
+    @hand.togglePicking()
+    return @play(cards)
 
   # -----------------------------------------------------------------------------------------------------
   # main loop
@@ -345,11 +327,10 @@ class Game
     if @pauseMenu.update(dt)
       updated = true
 
-    # @adjustBid(0)
-    # if @bidUI.minus.update(dt)
-    #   updated = true
-    # if @bidUI.plus.update(dt)
-    #   updated = true
+    if @pickUI.pick.update(dt)
+      updated = true
+    if @pickUI.play.update(dt)
+      updated = true
 
     return updated
 
@@ -401,9 +382,6 @@ class Game
     for line, i in @thirteen.log
       @fontRenderer.render @font, textHeight, line, 0, (i+1) * (textHeight + textPadding), 0, 0, @colors.white
 
-    # if @thirteen.marathonMode()
-    #   @fontRenderer.render @font, textHeight, "MARATHON MODE", @width - @pauseButtonSize, 0, 1, 0, @colors.orange
-
     aiPlayers = [
       @thirteen.players[1]
       @thirteen.players[2]
@@ -418,17 +396,20 @@ class Game
       characterWidth = @spriteRenderer.calcWidth(character.sprite, characterHeight)
       @spriteRenderer.render character.sprite, characterMargin, @hand.playCeiling, 0, characterHeight, 0, 0, 1, @colors.white
       @renderCount aiPlayers[0], aiPlayers[0].index == @thirteen.turn, countHeight, characterMargin + (characterWidth / 2), @hand.playCeiling - textPadding, 0.5, 0
+      @renderAIHand aiPlayers[0].count, characterMargin + (characterWidth / 2), @hand.playCeiling - textPadding, 0.5, 0
     # top side
     if aiPlayers[1] != null
       character = aiCharacters[aiPlayers[1].charID]
       @spriteRenderer.render character.sprite, @center.x, 0, 0, characterHeight, 0, 0.5, 0, @colors.white
       @renderCount aiPlayers[1], aiPlayers[1].index == @thirteen.turn, countHeight, @center.x, characterHeight, 0.5, 0
+      @renderAIHand aiPlayers[0].count, characterMargin + (characterWidth / 2), @hand.playCeiling - textPadding, 0.5, 0
     # right side
     if aiPlayers[2] != null
       character = aiCharacters[aiPlayers[2].charID]
       characterWidth = @spriteRenderer.calcWidth(character.sprite, characterHeight)
       @spriteRenderer.render character.sprite, @width - characterMargin, @hand.playCeiling, 0, characterHeight, 0, 1, 1, @colors.white
       @renderCount aiPlayers[2], aiPlayers[2].index == @thirteen.turn, countHeight, @width - (characterMargin + (characterWidth / 2)), @hand.playCeiling - textPadding, 0.5, 0
+      @renderAIHand aiPlayers[0].count, characterMargin + (characterWidth / 2), @hand.playCeiling - textPadding, 0.5, 0
 
     @pile.render()
 
@@ -454,6 +435,12 @@ class Game
     #   @fontRenderer.render @font, @aaHeight / 8, "Tap for next round ...", @center.x, @center.y, 0.5, 0.5, @colors.orange, =>
     #     if @thirteen.next() == OK
     #       @hand.set @thirteen.players[0].hand
+
+    if @thirteen.turn == 0
+      if not @hand.wantsToPlayDraggedCard()
+        @pickUI.pick.render()
+      if @hand.selectedCards().length > 0
+        @pickUI.play.render()
 
     # if (@thirteen.state == State.BID) and (@thirteen.turn == 0)
     #   @bidUI.minus.render()
@@ -493,21 +480,37 @@ class Game
       trickColor = "ffff33"
     else
       trickColor = "ff3333"
-    countString = "[ `#{trickColor}`#{cardCount}`` ]"
+    countString = " `#{trickColor}`#{cardCount}`` left "
 
     nameSize = @fontRenderer.size(@font, countHeight, nameString)
     countSize = @fontRenderer.size(@font, countHeight, countString)
     if nameSize.w > countSize.w
       countSize.w = nameSize.w
+    else
+      nameSize.w = countSize.w
     nameY = y
     countY = y
-    if anchory > 0
-      nameY -= countHeight
-    else
-      countY += countHeight
-    @spriteRenderer.render "solid", x, y, countSize.w, countSize.h * 2, 0, anchorx, anchory, @colors.overlay
+    boxHeight = countSize.h
+    if player.id != 1
+      boxHeight *= 2
+      if anchory > 0
+        nameY -= countHeight
+      else
+        countY += countHeight
+    @spriteRenderer.render "solid", x, y, countSize.w, boxHeight, 0, anchorx, anchory, @colors.overlay
     @fontRenderer.render @font, countHeight, nameString, x, nameY, anchorx, anchory, @colors.white
-    @fontRenderer.render @font, countHeight, countString, x, countY, anchorx, anchory, @colors.white
+    if player.id != 1
+      @fontRenderer.render @font, countHeight, countString, x, countY, anchorx, anchory, @colors.white
+
+  renderAIHand: (cardCount, countHeight, x, y, anchorx, anchory) ->
+    # TODO: make this draw a tiny hand of cards on the AI chars
+
+    # cardHeight = Math.floor(@height * CARD_RENDER_SCALE)
+    # cardWidth  = Math.floor(cardHeight * CARD_IMAGE_W / CARD_IMAGE_H)
+    # @game.drawImage "cards",
+    # Hand.CARD_IMAGE_OFF_X + (Hand.CARD_IMAGE_ADV_X * rank), Hand.CARD_IMAGE_OFF_Y + (Hand.CARD_IMAGE_ADV_Y * suit), Hand.CARD_IMAGE_W, Hand.CARD_IMAGE_H,
+    # x, y, @cardWidth * scale, @cardHeight * scale,
+    # rot, 0.5, 0.5, 1,1,1,1, cb
 
   # -----------------------------------------------------------------------------------------------------
   # rendering and zones
