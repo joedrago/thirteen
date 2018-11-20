@@ -34,10 +34,12 @@ class Game
       buttontext: { r:   1, g:   1, b:   1, a:   1 }
       lightgray:  { r: 0.5, g: 0.5, b: 0.5, a:   1 }
       background: { r:   0, g: 0.2, b:   0, a:   1 }
+      pile:       { r: 0.4, g: 0.2, b:   0, a:   1 }
       logbg:      { r: 0.1, g:   0, b:   0, a:   1 }
       arrow:      { r:   1, g:   1, b:   1, a:   1 }
       arrowclose: { r:   1, g: 0.5, b:   0, a: 0.3 }
-      handarea:   { r:   0, g: 0.1, b:   0, a: 1.0 }
+      hand_pick:  { r:   0, g: 0.1, b:   0, a: 1.0 }
+      hand_reorg: { r: 0.4, g:   0, b:   0, a: 1.0 }
       overlay:    { r:   0, g:   0, b:   0, a: 0.6 }
       mainmenu:   { r: 0.1, g: 0.1, b: 0.1, a:   1 }
       pausemenu:  { r: 0.1, g: 0.0, b: 0.1, a:   1 }
@@ -56,27 +58,6 @@ class Game
     @paused = false
     @howto = 0
     @renderCommands = []
-
-    pickButtonSize = @aaHeight / 16
-    pickTextSize = @aaHeight / 6
-    pickButtonDistance = pickButtonSize * 8
-    pickButtonY = @center.y + (pickButtonSize * 2)
-    @pickUI =
-      pick: new Button this, ['sbutton0', 'sbutton1'], @font, pickButtonSize, @center.x - pickButtonDistance, pickButtonY, (click) =>
-        if click
-          if @hand.selectedCards().length > 0
-            @playPicked()
-          else
-            @hand.togglePicking()
-        if @hand.picking
-          if @hand.selectedCards().length > 0
-            return 'Play'
-          return 'Pick'
-        return 'Reorg'
-      # play: new Button this, ['sbutton0', 'sbutton1'], @font, pickButtonSize, @center.x + pickButtonDistance, pickButtonY, (click) =>
-      #   if click
-      #     @playPicked()
-      #   return 'Play'
 
     @optionMenus =
       speeds: [
@@ -271,6 +252,8 @@ class Game
   play: (cards) ->
     console.log "(game) playing cards", cards
 
+    @thirteen.updatePlayerHand(@hand.cards)
+
     rawCards = []
     for card in cards
       rawCards.push card.card
@@ -282,12 +265,14 @@ class Game
     @lastErr = ret
     if ret == OK
       @hand.set @thirteen.players[0].hand
-      # @pile.hint [cardToPlay], x, y, r
+      @pile.hint cards
 
   playPicked: ->
     if not @hand.picking
       return
     cards = @hand.selectedCards()
+    if cards.length == 0
+      return
     # @hand.togglePicking()
     return @play(cards)
 
@@ -331,11 +316,6 @@ class Game
 
     if @pauseMenu.update(dt)
       updated = true
-
-    if @pickUI.pick.update(dt)
-      updated = true
-    # if @pickUI.play.update(dt)
-    #   updated = true
 
     return updated
 
@@ -394,29 +374,46 @@ class Game
     ]
 
     characterMargin = characterHeight / 2
+    @charCeiling = @height * 0.6
 
     # left side
     if aiPlayers[0] != null
       character = aiCharacters[aiPlayers[0].charID]
       characterWidth = @spriteRenderer.calcWidth(character.sprite, characterHeight)
-      @spriteRenderer.render character.sprite, characterMargin, @hand.playCeiling, 0, characterHeight, 0, 0, 1, @colors.white
-      @renderCount aiPlayers[0], aiPlayers[0].index == @thirteen.turn, countHeight, characterMargin + (characterWidth / 2), @hand.playCeiling - textPadding, 0.5, 0
-      @renderAIHand aiPlayers[0].count, characterMargin + (characterWidth / 2), @hand.playCeiling - textPadding, 0.5, 0
+      @spriteRenderer.render character.sprite, characterMargin, @charCeiling, 0, characterHeight, 0, 0, 1, @colors.white
+      @renderCount aiPlayers[0], aiPlayers[0].index == @thirteen.turn, countHeight, characterMargin + (characterWidth / 2), @charCeiling - textPadding, 0.5, 0
+      @renderAIHand aiPlayers[0].count, characterMargin + (characterWidth / 2), @charCeiling - textPadding, 0.5, 0
     # top side
     if aiPlayers[1] != null
       character = aiCharacters[aiPlayers[1].charID]
       @spriteRenderer.render character.sprite, @center.x, 0, 0, characterHeight, 0, 0.5, 0, @colors.white
       @renderCount aiPlayers[1], aiPlayers[1].index == @thirteen.turn, countHeight, @center.x, characterHeight, 0.5, 0
-      @renderAIHand aiPlayers[0].count, characterMargin + (characterWidth / 2), @hand.playCeiling - textPadding, 0.5, 0
+      @renderAIHand aiPlayers[0].count, characterMargin + (characterWidth / 2), @charCeiling - textPadding, 0.5, 0
     # right side
     if aiPlayers[2] != null
       character = aiCharacters[aiPlayers[2].charID]
       characterWidth = @spriteRenderer.calcWidth(character.sprite, characterHeight)
-      @spriteRenderer.render character.sprite, @width - characterMargin, @hand.playCeiling, 0, characterHeight, 0, 1, 1, @colors.white
-      @renderCount aiPlayers[2], aiPlayers[2].index == @thirteen.turn, countHeight, @width - (characterMargin + (characterWidth / 2)), @hand.playCeiling - textPadding, 0.5, 0
-      @renderAIHand aiPlayers[0].count, characterMargin + (characterWidth / 2), @hand.playCeiling - textPadding, 0.5, 0
+      @spriteRenderer.render character.sprite, @width - characterMargin, @charCeiling, 0, characterHeight, 0, 1, 1, @colors.white
+      @renderCount aiPlayers[2], aiPlayers[2].index == @thirteen.turn, countHeight, @width - (characterMargin + (characterWidth / 2)), @charCeiling - textPadding, 0.5, 0
+      @renderAIHand aiPlayers[0].count, characterMargin + (characterWidth / 2), @charCeiling - textPadding, 0.5, 0
 
+    # card area
+    handAreaHeight = 0.27 * @height
+    if @hand.picking
+      handareaColor = @colors.hand_pick
+    else
+      handareaColor = @colors.hand_reorg
+    @spriteRenderer.render "solid", 0, @height, @width, handAreaHeight, 0, 0, 1, handareaColor, =>
+      @hand.togglePicking()
+
+    # pile
+    pileDimension = @height * 0.4
+    @spriteRenderer.render "pile", @width / 2, @height / 2, pileDimension, pileDimension, 0, 0.5, 0.5, @colors.white, =>
+      @playPicked()
     @pile.render()
+
+    @hand.render()
+    @renderCount @thirteen.players[0], 0 == @thirteen.turn, countHeight, @center.x, @height, 0.5, 1
 
     if @thirteen.winner() and @pile.resting()
       lines = @gameOverText()
@@ -431,43 +428,19 @@ class Game
 
       restartQuitSize = @aaHeight / 12
       shadowDistance = restartQuitSize / 8
-      @fontRenderer.render @font, restartQuitSize, "Play Again", shadowDistance + @center.x / 2, shadowDistance + @height - restartQuitSize, 0.5, 1, @colors.black, =>
-      @fontRenderer.render @font, restartQuitSize, "Play Again", @center.x / 2, @height - restartQuitSize, 0.5, 1, @colors.gold, =>
+      @fontRenderer.render @font, restartQuitSize, "Play Again", shadowDistance + @center.x, shadowDistance + (@height - (handAreaHeight * 0.5)), 0.5, 1, @colors.black, =>
+      @fontRenderer.render @font, restartQuitSize, "Play Again", @center.x, @height - (handAreaHeight * 0.5), 0.5, 1, @colors.gold, =>
         @thirteen.deal()
         @prepareGame()
-
-    # if (@thirteen.state == State.ROUNDSUMMARY) and @pile.resting()
-    #   @fontRenderer.render @font, @aaHeight / 8, "Tap for next round ...", @center.x, @center.y, 0.5, 0.5, @colors.orange, =>
-    #     if @thirteen.next() == OK
-    #       @hand.set @thirteen.players[0].hand
-
-    if @thirteen.turn == 0
-      if not @hand.wantsToPlayDraggedCard()
-        @pickUI.pick.render()
-      # if @hand.selectedCards().length > 0
-      #   @pickUI.play.render()
-
-    # if (@thirteen.state == State.BID) and (@thirteen.turn == 0)
-    #   @bidUI.minus.render()
-    #   @bidUI.plus.render()
-    #   @fontRenderer.render @font, @bidTextSize, "#{@bid}", @center.x, @bidButtonY - (@bidTextSize * 0.1), 0.5, 0.5, @colors.white, =>
-    #     @attemptBid()
-    #   bidButtonHeight = @aaHeight / 12
-    #   bidSize = @fontRenderer.size(@font, bidButtonHeight, "Bid")
-    #   @spriteRenderer.render "solid", @center.x, (@bidButtonY + @bidTextSize) + (bidSize.h * 0.2), bidSize.w * 3, bidSize.h * 1.5, 0, 0.5, 0.5, @colors.bid, =>
-    #     @attemptBid()
-    #   @fontRenderer.render @font, bidButtonHeight, "Bid", @center.x, @bidButtonY + @bidTextSize, 0.5, 0.5, @colors.white
-
-    # card area
-    # @spriteRenderer.render "solid", 0, @height, @width, @height - @hand.playCeiling, 0, 0, 1, @colors.handarea
-    @hand.render()
-    @renderCount @thirteen.players[0], 0 == @thirteen.turn, countHeight, @center.x, @height, 0.5, 1
 
     # Headline (includes error)
     @fontRenderer.render @font, textHeight, @calcHeadline(), 0, 0, 0, 0, @colors.lightgray
 
     @spriteRenderer.render "pause", @width, 0, 0, @pauseButtonSize, 0, 1, 0, @colors.white, =>
       @paused = true
+
+    if not @hand.picking
+      @fontRenderer.render @font, textHeight, "Unlocked", 0.02 * @width, @height - handAreaHeight, 0, 0, @colors.white
 
     if @paused
       @pauseMenu.render()

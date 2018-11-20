@@ -184,6 +184,9 @@ class Thirteen
     @game.log("added AI player")
     return OK
 
+  updatePlayerHand: (cards) ->
+    # This maintains the reorganized order of the player's hand
+    @players[0].hand = cards.slice(0)
 
   winner: ->
     for player, i in @players

@@ -14,10 +14,11 @@ CARD_PLAY_CEILING = 0.60                  # how much of the top of the screen re
 
 NO_CARD = -1
 
-Selected =
+Highlight =
   NONE: -1
   UNSELECTED: 0
   SELECTED: 1
+  PILE: 2
 
 # taken from http://stackoverflow.com/questions/1211212/how-to-calculate-an-angle-from-three-points
 # uses law of cosines to figure out the hand arc angle
@@ -41,13 +42,14 @@ class Hand
   @CARD_IMAGE_ADV_X: CARD_IMAGE_ADV_X
   @CARD_IMAGE_ADV_Y: CARD_IMAGE_ADV_Y
   @CARD_RENDER_SCALE: CARD_RENDER_SCALE
+  @Highlight: Highlight
 
   constructor: (@game) ->
     @cards = []
     @anims = {}
     @positionCache = {}
 
-    @picking = false
+    @picking = true
     @picked = []
     @pickPaint = false
 
@@ -242,18 +244,18 @@ class Hand
       do (anim, index) =>
         if @picking
           if @picked[index]
-            selectedState = Selected.SELECTED
+            highlightState = Highlight.SELECTED
           else
-            selectedState = Selected.UNSELECTED
+            highlightState = Highlight.UNSELECTED
         else
           if @wantsToPlayDraggedCard()
             if (index == @dragIndexCurrent)
-              selectedState = Selected.SELECTED
+              highlightState = Highlight.SELECTED
             else
-              selectedState = Selected.UNSELECTED
+              highlightState = Highlight.UNSELECTED
           else
-            selectedState = Selected.NONE
-        @renderCard v, anim.cur.x, anim.cur.y, anim.cur.r, 1, selectedState, (clickX, clickY) =>
+            highlightState = Highlight.NONE
+        @renderCard v, anim.cur.x, anim.cur.y, anim.cur.r, 1, highlightState, (clickX, clickY) =>
           @down(clickX, clickY, index)
 
   renderCard: (v, x, y, rot, scale, selected, cb) ->
@@ -262,13 +264,15 @@ class Hand
     suit = Math.floor(v % 4)
 
     col = switch selected
-      when Selected.NONE
+      when Highlight.NONE
         [1, 1, 1]
-      when Selected.UNSELECTED
+      when Highlight.UNSELECTED
         # [0.3, 0.3, 0.3]
         [1, 1, 1]
-      when Selected.SELECTED
+      when Highlight.SELECTED
         [0.5, 0.5, 0.9]
+      when Highlight.PILE
+        [0.6, 0.6, 0.6]
 
     @game.drawImage "cards",
     CARD_IMAGE_OFF_X + (CARD_IMAGE_ADV_X * rank), CARD_IMAGE_OFF_Y + (CARD_IMAGE_ADV_Y * suit), CARD_IMAGE_W, CARD_IMAGE_H,
@@ -302,12 +306,5 @@ class Hand
 
     @positionCache[handSize] = positions
     return positions
-
-  # renderHand: ->
-  #   return if @hand.length == 0
-  #   for v,index in @hand
-  #     do (index) =>
-  #       @renderCard v, x, y, currentAngle, 1, Selected.NONE, (clickX, clickY) =>
-  #         @down(clickX, clickY, index)
 
 module.exports = Hand
