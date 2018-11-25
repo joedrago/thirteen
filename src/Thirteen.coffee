@@ -144,6 +144,19 @@ class Thirteen
     if @log.length > MAX_LOG_LINES
       @log.shift()
 
+  headline: ->
+    if @winner() != null
+      return "Game Over"
+
+    if @currentPlay
+      playString = @currentPlay.type + " (#{@currentPlay.high})"
+    else
+      playString = "Anything"
+
+    currentPlayer = @currentPlayer()
+    headline = playString + " to " + currentPlayer.name
+    return headline
+
   findPlayer: (id) ->
     for player in @players
       if player.id == id
@@ -256,12 +269,18 @@ class Thirteen
     if params.id != currentPlayer.id
       return 'notYourTurn'
 
+    if @everyonePassed()
+      return 'throwAnything'
+
     return OK
 
   canPlay: (params, incomingPlay) ->
-    ret = @canPass(params)
-    if ret != OK
-      return ret
+    if @winner() != null
+      return 'gameOver'
+
+    currentPlayer = @currentPlayer()
+    if params.id != currentPlayer.id
+      return 'notYourTurn'
 
     currentPlayer = @currentPlayer()
     if currentPlayer.pass

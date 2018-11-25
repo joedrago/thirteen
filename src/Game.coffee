@@ -220,7 +220,7 @@ class Game
   calcHeadline: ->
     return "" if @thirteen == null
 
-    headline = ""
+    headline = @thirteen.headline()
     # switch @thirteen.state
     #   when State.BID
     #     headline = "Waiting for `ff7700`#{@thirteen.players[@thirteen.turn].name}`` to `ffff00`bid``"
