@@ -81,12 +81,16 @@ class Hand
   togglePicking: ->
     @picking = !@picking
     if @picking
-      @picked = new Array(@cards.length).fill(false)
+      @selectNone()
+
+  selectNone: ->
+    @picked = new Array(@cards.length).fill(false)
+    return
 
   set: (cards) ->
     @cards = cards.slice(0)
     if @picking
-      @picked = new Array(@cards.length).fill(false)
+      @selectNone()
     @syncAnims()
     @warp()
 

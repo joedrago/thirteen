@@ -101,12 +101,15 @@ class Thirteen
 
   deal: (params) ->
     deck = new ShuffledDeck()
-    for player, i in @players
-      @game.log "dealing 13 cards to player #{i}"
+    for player, playerIndex in @players
+      @game.log "dealing 13 cards to player #{playerIndex}"
 
       player.hand = []
       for j in [0...13]
-        player.hand.push(deck.cards.shift())
+        raw = deck.cards.shift()
+        if raw == 0
+          @turn = playerIndex
+        player.hand.push(raw)
 
       console.log "@game.options.sortIndex #{@game.options.sortIndex}"
       if (@game.options.sortIndex == 0) or player.ai
@@ -116,11 +119,11 @@ class Thirteen
         # Reverse
         player.hand.sort (a,b) -> return b - a
 
-    @turn = 0 # TODO: fix
     @pile = []
     @pileWho = -1
     @throwID = 0
     @currentPlay = null
+    @unpassAll()
 
     @output('Hand dealt, ' + @players[@turn].name + ' plays first')
 
@@ -260,6 +263,10 @@ class Thirteen
     if ret != OK
       return ret
 
+    currentPlayer = @currentPlayer()
+    if currentPlayer.pass
+      return 'mustPass'
+
     if incomingPlay == null
       return 'invalidPlay'
 
@@ -286,10 +293,13 @@ class Thirteen
     if ret != OK
       return ret
 
+    # TODO: make pretty names based on the play, add play to headline
+    verb = "continues with"
     if @currentPlay
       if (incomingPlay.type != @currentPlay.type) or (incomingPlay.high < @currentPlay.high)
         # New play!
         @unpassAll()
+        verb = "throws new play"
 
     @currentPlay = incomingPlay
 
@@ -297,7 +307,7 @@ class Thirteen
     currentPlayer = @currentPlayer()
     currentPlayer.hand = @removeCards(currentPlayer.hand, params.cards)
 
-    @output("#{currentPlayer.name} throws #{cardsToString(params.cards)}")
+    @output("#{currentPlayer.name} #{verb} #{cardsToString(params.cards)}")
 
     if currentPlayer.hand.length == 0
       @output("#{currentPlayer.name} wins!")
@@ -319,7 +329,10 @@ class Thirteen
       return ret
 
     currentPlayer = @currentPlayer()
-    @output("#{currentPlayer.name} passes")
+    if currentPlayer.pass
+      @output("#{currentPlayer.name} auto-passes")
+    else
+      @output("#{currentPlayer.name} passes")
     currentPlayer.pass = true
     @turn = @playerAfter(@turn)
     return OK
@@ -349,6 +362,10 @@ class Thirteen
 
     currentPlayer = @currentPlayer()
     if not currentPlayer.ai
+      if currentPlayer.pass
+        @aiLog("autopassing for player")
+        @aiPass(currentPlayer)
+        return true
       return false
 
     character = aiCharacters[currentPlayer.charID]

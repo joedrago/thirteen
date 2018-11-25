@@ -276,6 +276,7 @@ class Game
     if not @hand.picking
       return
     cards = @hand.selectedCards()
+    @hand.selectNone()
     if cards.length == 0
       return @pass()
     # @hand.togglePicking()
