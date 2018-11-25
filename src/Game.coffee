@@ -249,6 +249,11 @@ class Game
   # -----------------------------------------------------------------------------------------------------
   # card handling
 
+  pass: ->
+    @lastErr = @thirteen.pass {
+      id: 1
+    }
+
   play: (cards) ->
     console.log "(game) playing cards", cards
 
@@ -272,7 +277,7 @@ class Game
       return
     cards = @hand.selectedCards()
     if cards.length == 0
-      return
+      return @pass()
     # @hand.togglePicking()
     return @play(cards)
 

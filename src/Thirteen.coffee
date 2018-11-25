@@ -91,7 +91,7 @@ class Thirteen
       @log = []
 
       @players = [
-        { id: 1, name: 'Player', index: 0 }
+        { id: 1, name: 'Player', index: 0, pass: false }
       ]
 
       for i in [1...4]
@@ -109,7 +109,7 @@ class Thirteen
         player.hand.push(deck.cards.shift())
 
       console.log "@game.options.sortIndex #{@game.options.sortIndex}"
-      if @game.options.sortIndex == 0
+      if (@game.options.sortIndex == 0) or player.ai
         # Normal
         player.hand.sort (a,b) -> return a - b
       else
@@ -120,6 +120,7 @@ class Thirteen
     @pile = []
     @pileWho = -1
     @throwID = 0
+    @currentPlay = null
 
     @output('Hand dealt, ' + @players[@turn].name + ' plays first')
 
@@ -129,7 +130,7 @@ class Thirteen
   # Thirteen methods
 
   save: ->
-    names = "log players turn pile pileWho throwID".split(" ")
+    names = "log players turn pile pileWho throwID currentPlay".split(" ")
     state = {}
     for name in names
       state[name] = this[name]
@@ -148,6 +149,14 @@ class Thirteen
 
   currentPlayer: ->
     return @players[@turn]
+
+  everyonePassed: ->
+    for player, playerIndex in @players
+      if playerIndex == @turn
+        continue
+      if not player.pass
+        return false
+    return true
 
   playerAfter: (index) ->
     return (index + 1) % @players.length
@@ -177,6 +186,7 @@ class Thirteen
       charID: character.id
       name: character.name
       id: 'ai' + String(@players.length)
+      pass: false
       ai: true
 
     @addPlayer(ai)
@@ -218,6 +228,23 @@ class Thirteen
         newHand.push card
     return newHand
 
+  classify: (rawCards) ->
+    cards = rawCards.map (raw) -> new Card(raw)
+
+    # look for X of a kind
+    reqValue = cards[0].value
+    highestRaw = cards[0].raw
+    for card in cards
+      if card.value != reqValue
+        return null
+      if highestRaw < card.raw
+        highestRaw = card.raw
+    type = 'kind' + cards.length
+    return {
+      type: type
+      high: highestRaw
+    }
+
   canPass: (params) ->
     if @winner() != null
       return 'gameOver'
@@ -228,18 +255,43 @@ class Thirteen
 
     return OK
 
-  canPlay: (params) ->
+  canPlay: (params, incomingPlay) ->
     ret = @canPass(params)
     if ret != OK
       return ret
 
+    if incomingPlay == null
+      return 'invalidPlay'
+
+    if @currentPlay == null
+      return OK
+
+    if @everyonePassed()
+      return OK
+
+    if incomingPlay.type != @currentPlay.type
+      return 'wrongPlay'
+
+    if incomingPlay.high < @currentPlay.high
+      return 'tooLowPlay'
+
     return OK
 
   play: (params) ->
+    incomingPlay = @classify(params.cards)
+    console.log "incomingPlay", incomingPlay
+
     console.log "someone calling play", params
-    ret = @canPlay(params)
+    ret = @canPlay(params, incomingPlay)
     if ret != OK
       return ret
+
+    if @currentPlay
+      if (incomingPlay.type != @currentPlay.type) or (incomingPlay.high < @currentPlay.high)
+        # New play!
+        @unpassAll()
+
+    @currentPlay = incomingPlay
 
     @throwID += 1
     currentPlayer = @currentPlayer()
@@ -256,6 +308,11 @@ class Thirteen
     @turn = @playerAfter(@turn)
     return OK
 
+  unpassAll: ->
+    for player in @players
+      player.pass = false
+    return
+
   pass: (params) ->
     ret = @canPass(params)
     if ret != OK
@@ -263,6 +320,7 @@ class Thirteen
 
     currentPlayer = @currentPlayer()
     @output("#{currentPlayer.name} passes")
+    currentPlayer.pass = true
     @turn = @playerAfter(@turn)
     return OK
 
@@ -272,402 +330,8 @@ class Thirteen
   aiPass: (currentPlayer) ->
     return @pass({'id':currentPlayer.id})
 
-
-  # currentSuit: ->
-  #   if @pile.length == 0
-  #     return Suit.NONE
-
-  #   card = new Card(@pile[0])
-  #   return card.suit
-
-  # playerHasSuit: (player, suit) ->
-  #   for v in player.hand
-  #     card = new Card(v)
-  #     if card.suit == suit
-  #       return true
-  #   return false
-
-  # playerHasOnlySpades: (player) ->
-  #   for v in player.hand
-  #     card = new Card(v)
-  #     if card.suit != Suit.SPADES
-  #       return false
-  #   return true
-
-  # playerCanWinInSuit: (player, championCard) ->
-  #   for v in player.hand
-  #     card = new Card(v)
-  #     if card.suit == championCard.suit
-  #       if card.value > championCard.value
-  #         return true
-  #   return false
-
-  # bestInPile: ->
-  #   if @pile.length == 0
-  #     return -1
-  #   currentSuit = @currentSuit()
-  #   best = 0
-  #   for i in [1...@pile.length]
-  #     if cardBeats(@pile[i], @pile[best], currentSuit)
-  #       best = i
-  #   return best
-
-  # reset: (params) ->
-  #   if @players.length < MIN_PLAYERS
-  #     return 'notEnoughPlayers'
-
-  #   for player in @players
-  #     player.hand = []
-
-  #   @nextRound = 0
-  #   @trumpBroken = false
-  #   @prev = []
-  #   @pile = []
-  #   @pileWho = []
-  #   @prevWho = []
-  #   @prevTrickTaker = -1
-
-  #   if @marathonMode()
-  #     roundCount = "Marathon mode"
-  #   else
-  #     roundCount = "#{@rounds.length} rounds"
-  #   @output("New game! (#{@players.length} players, #{roundCount})")
-
-  #   @startBid()
-
-  #   return OK
-
-  # startBid: (params) ->
-  #   if @marathonMode()
-  #     if @players[0].score > 0
-  #       return 'gameOver'
-  #     @tricks = 13
-  #   else
-  #     if(@nextRound >= @rounds.length)
-  #       return 'gameOver'
-  #     @tricks = @rounds[@nextRound]
-
-  #   @nextRound++
-
-  #   if @prevTrickTaker == -1
-  #     @dealer = Math.floor(Math.random() * @players.length)
-  #     @output "Randomly assigning dealer to #{@players[@dealer].name}"
-  #   else
-  #     @dealer = @prevTrickTaker
-  #     @output "#{@players[@dealer].name} claimed last trick, deals"
-
-  #   deck = new ShuffledDeck()
-  #   for player, i in @players
-  #     player.bid = -1
-  #     player.tricks = 0
-
-  #     @game.log "dealing #{@tricks} cards to player #{i}"
-
-  #     player.hand = []
-  #     for j in [0...@tricks]
-  #       player.hand.push(deck.cards.shift())
-
-  #     player.hand.sort (a,b) -> return a - b
-
-  #   @state = State.BID
-  #   @turn = @playerAfter(@dealer)
-  #   @bids = 0
-  #   @pile = []
-  #   @pileWho = []
-  #   @prev = []
-  #   @prevWho = []
-  #   @prevTrickTaker = -1
-
-  #   @output('Round ' + @nextRound + ' begins ' + @players[@turn].name + ' bids first')
-
-  #   return OK
-
-  # endBid: ->
-  #   lowestPlayer = 0
-  #   lowestCard = @players[0].hand[0] # hand is sorted, therefore hand[0] is the lowest
-  #   for i in [1...@players.length]
-  #     player = @players[i]
-  #     if player.hand[0] < lowestCard
-  #       lowestPlayer = i
-  #       lowestCard = player.hand[0]
-
-  #   @lowestRequired = true # Next player is obligated to throw the lowest card
-  #   @turn = lowestPlayer
-  #   @trumpBroken = false
-  #   @trickID = 0
-  #   @startTrick()
-
-  # startTrick: () ->
-  #   # @turn should already be correct, either from endBid (lowest club) or endTrick (last trickTaker)
-
-  #   @trickTaker = -1
-  #   @state = State.TRICK
-
-  #   return OK
-
-  # endTrick: ->
-  #   taker = @players[@trickTaker]
-  #   taker.tricks++
-
-  #   @output(taker.name + ' pockets the trick [' + taker.tricks + ']')
-  #   @prevTrickTaker = @trickTaker
-  #   @turn = @trickTaker
-  #   @prev = @pile
-  #   @prevWho = @pileWho
-  #   @pile = []
-  #   @pileWho = []
-  #   @trickID++
-
-  #   if @players[0].hand.length > 0
-  #     @startTrick()
-  #   else
-  #     roundCount = @rounds.length
-  #     if @marathonMode()
-  #       roundCount = "M"
-  #     @output('Round ends [' + @nextRound + '/' + roundCount + ']')
-
-  #     for player in @players
-  #       overUnder = player.bid - player.tricks
-  #       if overUnder < 0
-  #         overUnder *= -1
-
-  #       penaltyPoints = 0
-  #       step = 1
-  #       while overUnder > 0
-  #         penaltyPoints += step++ # dat quadratic
-  #         overUnder--
-
-  #       player.score += penaltyPoints
-
-  #       player.lastWent = String(player.tricks) + '/' + String(player.bid)
-  #       player.lastPoints = penaltyPoints
-
-  #     gameEnding = false
-  #     if @marathonMode()
-  #       gameEnding = (@players[0].score > 0)
-  #     else
-  #       gameEnding = (@nextRound >= @rounds.length)
-
-  #     if gameEnding
-  #       @state = State.POSTGAMESUMMARY
-  #     else
-  #       @state = State.ROUNDSUMMARY
-
-  # ---------------------------------------------------------------------------------------------------------------------------
-  # Thirteen actions
-
-  # bid: (params) ->
-  #   if @state != State.BID
-  #     return 'notBiddingNow'
-
-  #   currentPlayer = @currentPlayer()
-  #   if params.id != currentPlayer.id
-  #     return 'notYourTurn'
-
-  #   params.bid = Number(params.bid)
-
-  #   if (params.bid < 0) || (params.bid > @tricks)
-  #     return 'bidOutOfRange'
-
-  #   if @turn == @dealer
-  #     if (@bids + params.bid) == @tricks
-  #       return 'dealerFucked'
-
-  #     @endBid()
-  #   else
-  #     @turn = @playerAfter(@turn)
-
-  #   currentPlayer.bid = params.bid
-  #   @bids += currentPlayer.bid
-  #   @output(currentPlayer.name + " bids " + currentPlayer.bid)
-
-  #   if @state != State.BID
-  #     # Bidding ended
-  #     @output('Bidding ends ' + @bids + '/' + @tricks + ' ' + @players[@turn].name + ' throws first')
-
-  #   return OK
-
-  # canPlay: (params) ->
-  #   if @state != State.TRICK
-  #     return 'notInTrick'
-
-  #   currentPlayer = @currentPlayer()
-  #   if params.id != currentPlayer.id
-  #     return 'notYourTurn'
-
-  #   if params.hasOwnProperty('which')
-  #     params.which = Number(params.which)
-  #     params.index = -1
-  #     for card, i in currentPlayer.hand
-  #       if card == params.which
-  #         params.index = i
-  #         break
-
-  #     if params.index == -1
-  #       return 'doNotHave'
-  #   else
-  #     params.index = Number(params.index)
-
-  #   if (params.index < 0) || (params.index >= currentPlayer.hand.length)
-  #     return 'indexOutOfRange'
-
-  #   if @lowestRequired && (params.index != 0)
-  #     return 'lowestCardRequired'
-
-  #   chosenCardX = currentPlayer.hand[params.index]
-  #   chosenCard = new Card(chosenCardX)
-
-  #   if((!@trumpBroken) &&                    # Ensure that trump is broken
-  #   (@pile.length == 0) &&                   # before allowing someone to lead
-  #   (chosenCard.suit == Suit.SPADES) &&      # with spades
-  #   (!@playerHasOnlySpades(currentPlayer)))  # unless it is all they have
-  #     return 'trumpNotBroken'
-
-  #   bestIndex = @bestInPile()
-  #   forcedSuit = @currentSuit()
-  #   if forcedSuit != Suit.NONE # safe to assume (bestIndex != -1) in this block
-  #     if @playerHasSuit(currentPlayer, forcedSuit)
-  #       # You must throw in-suit if you have one of that suit
-  #       if chosenCard.suit != forcedSuit
-  #         return 'forcedInSuit'
-
-  #       # If the current winner is winning in-suit, you must try to beat them in-suit
-  #       currentWinningCardX = @pile[bestIndex]
-  #       currentWinningCard = new Card(currentWinningCardX)
-  #       if currentWinningCard.suit == forcedSuit
-  #         if((!cardBeats(chosenCardX, currentWinningCardX, forcedSuit)) &&
-  #         (@playerCanWinInSuit(currentPlayer, currentWinningCard)))
-  #           return 'forcedHigherInSuit'
-  #     else
-  #       # Current player doesn't have that suit, don't bother
-  #       forcedSuit = Suit.NONE
-
-  #   return OK
-
-  # play: (params) ->
-  #   canPlayCard = @canPlay(params)
-  #   if canPlayCard != OK
-  #     return canPlayCard
-
-  #   currentPlayer = @currentPlayer()
-
-  #   if params.hasOwnProperty('which')
-  #     params.which = Number(params.which)
-  #     params.index = -1
-  #     for card, i in currentPlayer.hand
-  #       if card == params.which
-  #         params.index = i
-  #         break
-
-  #     if params.index == -1
-  #       return 'doNotHave'
-  #   else
-  #     params.index = Number(params.index)
-
-  #   chosenCardX = currentPlayer.hand[params.index]
-  #   chosenCard = new Card(chosenCardX)
-
-  #   # If you get here, you can throw whatever you want, and it
-  #   # will either put you in the lead, trump, or dump.
-
-  #   @lowestRequired = false
-
-  #   # Throw the card on the pile, advance the turn
-  #   @pile.push(currentPlayer.hand[params.index])
-  #   @pileWho.push(@turn)
-  #   currentPlayer.hand.splice(params.index, 1)
-
-  #   # Recalculate best index
-  #   bestIndex = @bestInPile()
-  #   if bestIndex == (@pile.length - 1)
-  #     # The card this player just threw is the best card. Claim the trick.
-  #     @trickTaker = @turn
-
-  #   if @pile.length == 1
-  #     msg = currentPlayer.name + " leads with " + chosenCard.name
-  #   else
-  #     if @trickTaker == @turn
-  #       msg = currentPlayer.name + " claims the trick with " + chosenCard.name
-  #     else
-  #       msg = currentPlayer.name + " dumps " + chosenCard.name
-
-  #   if((!@trumpBroken) && (chosenCard.suit == Suit.SPADES))
-  #     msg += " (trump broken)"
-  #     @trumpBroken = true
-
-  #   @output(msg)
-
-  #   if @pile.length == @players.length
-  #     @endTrick()
-  #   else
-  #     @turn = @playerAfter(@turn)
-
-  #   return OK
-
   # ---------------------------------------------------------------------------------------------------------------------------
   # AI
-
-  # # Helper function to bid reasoning for bidding i tricks
-  # aiLogBid: (i, why) ->
-  #   currentPlayer = @currentPlayer()
-  #   if not currentPlayer.ai
-  #     return false
-
-  #   card = new Card(currentPlayer.hand[i])
-  #   @aiLog('potential winner: ' + card.name + ' [' + why + ']')
-
-  # # Helper function to bid reasoning for playing card index i
-  # aiLogPlay: (i, why) ->
-  #   if i == -1
-  #     return
-
-  #   currentPlayer = @currentPlayer()
-  #   if not currentPlayer.ai
-  #     return false
-
-  #   card = new Card(currentPlayer.hand[i])
-  #   @aiLog('bestPlay: ' + card.name + ' [' + why + ']')
-
-  # # Attempts to bid i tricks
-  # aiBid: (currentPlayer, i) ->
-  #   reply = @bid({'id':currentPlayer.id, 'bid':i})
-  #   if reply == OK
-  #     @game.log("AI: " + currentPlayer.name + " bids " + String(i))
-  #     return true
-  #   return false
-
-  # # Attempts to play card index i
-  # aiPlay: (currentPlayer, i) ->
-  #   card = new Card(currentPlayer.hand[i])
-  #   # @game.log "aiPlay: #{i}"
-  #   reply = @play({'id':currentPlayer.id, 'index':i})
-  #   if reply == OK
-  #     @game.log("AI: " + currentPlayer.name + " plays " + card.name)
-  #     return true
-  #   else
-  #     if reply == 'dealerFucked'
-  #       @output(currentPlayer.name + ' says "I hate being the dealer."')
-  #   return false
-
-  # # Tries to play lowest cards first (moves right)
-  # aiPlayLow: (currentPlayer, startingPoint) ->
-  #   for i in [startingPoint...currentPlayer.hand.length]
-  #     if @aiPlay(currentPlayer, i)
-  #       return true
-  #   for i in [0...startingPoint]
-  #     if @aiPlay(currentPlayer, i)
-  #       return true
-  #   return false
-
-  # # Tries to play highest cards first (moves left)
-  # aiPlayHigh: (currentPlayer, startingPoint) ->
-  #   for i in [startingPoint..0] by -1
-  #     if(@aiPlay(currentPlayer, i))
-  #       return true
-  #   for i in [currentPlayer.hand.length-1...startingPoint] by -1
-  #     if @aiPlay(currentPlayer, i)
-  #       return true
-  #   return false
 
   # Generic logging function; prepends current AI player's guts before printing text
   aiLog: (text) ->
@@ -676,7 +340,7 @@ class Thirteen
       return false
 
     character = aiCharacters[currentPlayer.charID]
-    @game.log('AI['+currentPlayer.name+' '+character.brain+']: hand:'+stringifyCards(currentPlayer.hand)+' pile:'+stringifyCards(@pile)+' '+text)
+    @game.log('AI['+currentPlayer.name+' '+character.brain+']: hand:'+cardsToString(currentPlayer.hand)+' pile:'+cardsToString(@pile)+' '+text)
 
   # Detects if the current player is AI during a BID or TRICK phase and acts according to their 'brain'
   aiTick: ->
@@ -687,56 +351,10 @@ class Thirteen
     if not currentPlayer.ai
       return false
 
-    @aiLog("about to call brain.play")
     character = aiCharacters[currentPlayer.charID]
-    playedCard = @brains[character.brain].play.apply(this, [currentPlayer])
-    if playedCard
+    ret = @brains[character.brain].play.apply(this, [currentPlayer, @currentPlay, @everyonePassed()])
+    if ret == OK
       return true
-    else
-      @aiLog('brain failed to play: passing')
-      return @aiPass(currentPlayer)
-
-    # # ------------------------------------------------------------
-    # # Bidding
-
-    # if @state == State.BID
-    #   @aiLog("about to call brain.bid")
-    #   character = aiCharacters[currentPlayer.charID]
-    #   bid = @brains[character.brain].bid.apply(this, [currentPlayer])
-
-    #   # Try to bid as close as you can to the 'best bid'
-    #   @aiLog('bid:'+String(bid))
-    #   if @aiBid(currentPlayer, bid)
-    #     return true
-    #   if @aiBid(currentPlayer, bid-1)
-    #     return true
-    #   if @aiBid(currentPlayer, bid+1)
-    #     return true
-    #   if @aiBid(currentPlayer, bid-2)
-    #     return true
-    #   if @aiBid(currentPlayer, bid+2)
-    #     return true
-
-    #   # Give up and bid whatever is allowed
-    #   for i in [0...currentPlayer.hand.length]
-    #     if @aiBid(currentPlayer, i)
-    #       @aiLog('gave up and bid:'+String(i))
-    #       return true
-
-    # # ------------------------------------------------------------
-    # # Playing
-
-    # if @state == State.TRICK
-    #   @aiLog("about to call brain.play")
-    #   character = aiCharacters[currentPlayer.charID]
-    #   playedCard = @brains[character.brain].play.apply(this, [currentPlayer])
-    #   if playedCard
-    #     return true
-    #   else
-    #     @aiLog('brain failed to play card: picking random card to play')
-    #     startingPoint = Math.floor(Math.random() * currentPlayer.hand.length)
-    #     return @aiPlayLow(currentPlayer, startingPoint)
-
     return false
 
 # ---------------------------------------------------------------------------------------------------------------------------
@@ -745,7 +363,6 @@ class Thirteen
   # Brains must have:
   # * id: internal identifier for the brain
   # * name: pretty name
-  # * bid(currentPlayer) returns the bid value between [0 - handSize].
   # * play(currentPlayer) attempts to play a card by calling aiPlay(). Should return true if it successfully played a card (aiPlay() returned true)
   brains:
 
@@ -757,138 +374,31 @@ class Thirteen
       name: "Normal"
 
       # normal
-      play: (currentPlayer) ->
-        @aiPlay(currentPlayer, [currentPlayer.hand[0]])
-        return true
+      play: (currentPlayer, currentPlay, everyonePassed) ->
+        if currentPlayer.pass
+          @aiLog("already passed, going to keep passing")
+          return @aiPass(currentPlayer)
 
-    # ------------------------------------------------------------
-    # Chaos: Completely random. Probably awful to play against.
-    chaos:
-      id:   "chaos"
-      name: "Chaos"
+        if currentPlay and not everyonePassed
+          if currentPlay.type != 'kind1'
+            @aiLog("unwilling to do anything but singles, passing")
+            return @aiPass(currentPlayer)
+        else
+          # no current play, throw the first card
+          @aiLog("I can do anything, throwing a single")
+          if @aiPlay(currentPlayer, [currentPlayer.hand[0]]) == OK
+            return OK
 
-      # chaos
-      bid: (currentPlayer) ->
-        # pick a bid somewhere in the first 50%
-        return Math.floor(Math.random() * currentPlayer.hand.length * 0.5)
+        # find the first card that beats the currentPlay's high
+        for rawCard in currentPlayer.hand
+          if rawCard > currentPlay.high
+            @aiLog("found smallest single (#{rawCard}), playing")
+            if @aiPlay(currentPlayer, [rawCard]) == OK
+              return OK
+            break
 
-      # chaos
-      play: (currentPlayer) ->
-        legalIndices = []
-        for v, i in currentPlayer.hand
-          canPlayCard = @canPlay({ id: currentPlayer.id, index: i })
-          if canPlayCard == OK
-            legalIndices.push i
-          # else
-          #   @aiLog "canPlayCard #{i} returned #{canPlayCard}"
-        randomIndex = Math.floor(Math.random() * legalIndices.length)
-        @aiLog "legal indices: #{JSON.stringify(legalIndices)}, choosing index #{legalIndices[randomIndex]}"
-        return @aiPlay(currentPlayer, legalIndices[randomIndex])
-
-    # ------------------------------------------------------------
-    # Conservative Moron: Bids spade count, and plays low cards.
-    conservativeMoron:
-      id:   "conservativeMoron"
-      name: "Conservative Moron"
-
-      # conservativeMoron
-      bid: (currentPlayer) ->
-        bid = 0
-        for v in currentPlayer.hand
-          card = new Card(v)
-          bid++ if card.suit == Suit.SPADES
-        @aiLog "I am a moron and I have #{bid} spades. Let's roll with it."
-        return bid
-
-      # conservativeMoron
-      play: (currentPlayer) ->
-        @aiLog "playing lowest possible card"
-        return @aiPlayLow(currentPlayer, 0)
-
-    # ------------------------------------------------------------
-    # Aggressive Moron: Bids spades and aces, and plays high cards.
-    aggressiveMoron:
-      id:   "aggressiveMoron"
-      name: "Aggressive Moron"
-
-      # aggressiveMoron
-      bid: (currentPlayer) ->
-        bid = 0
-        for v in currentPlayer.hand
-          card = new Card(v)
-          bid++ if (card.suit == Suit.SPADES) or (card.value == 12)
-        @aiLog "I am a moron and I have #{bid} spades and/or aces. Fart."
-        return bid
-
-      # aggressiveMoron
-      play: (currentPlayer) ->
-        @aiLog "playing highest possible card"
-        return @aiPlayHigh(currentPlayer, currentPlayer.hand.length - 1)
-
-# ---------------------------------------------------------------------------------------------------------------------------
-# AI card helpers
-
-valuesOfSuit = (hand, suit) ->
-  values = []
-  for v in hand
-    card = new Card(v)
-    if card.suit == suit
-      values.push(card.value)
-  return values
-
-stringifyCards = (cards) ->
-  t = ''
-  for v in cards
-    card = new Card(v)
-    if(t)
-      t += ','
-    t += card.name
-
-  return '['+t+']'
-
-lowestIndexInSuit = (hand, suit) ->
-  for v,i in hand
-    card = new Card(v)
-    if card.suit == suit
-      return i
-  return -1
-
-highestIndexInSuit = (hand, suit) ->
-  for v,i in hand by -1
-    card = new Card(v)
-    if card.suit == suit
-      return i
-  return -1
-
-lowestValueIndex = (hand, avoidSuit) -> # use Suit.NONE to return any suit
-  card = new Card(hand[0])
-  lowestIndex = 0
-  lowestValue = card.value
-  for i in [1...hand.length]
-    card = new Card(hand[i])
-    if card.suit != avoidSuit
-      if card.value < lowestValue
-        lowestValue = card.value
-        lowestIndex = i
-  return lowestIndex
-
-highestValueNonSpadeIndex = (hand, avoidSuit) ->
-  highestIndex = -1
-  highestValue = -1
-  for i in [hand.length-1..0] by -1
-    card = new Card(hand[i])
-    if (card.suit != avoidSuit) && (card.suit != Suit.SPADES)
-      if card.value > highestValue
-        highestValue = card.value
-        highestIndex = i
-  return highestIndex
-
-highestValueIndexInSuitLowerThan = (hand, winningCard) ->
-  for i in [hand.length-1..0] by -1
-    card = new Card(hand[i])
-    if (card.suit == winningCard.suit) && (card.value < winningCard.value)
-      return i
-  return -1
+        @aiLog("nothing else to do, passing")
+        return @aiPass(currentPlayer)
 
 # ---------------------------------------------------------------------------------------------------------------------------
 # Exports
@@ -898,4 +408,3 @@ module.exports =
   Thirteen: Thirteen
   OK: OK
   aiCharacters: aiCharacters
-
