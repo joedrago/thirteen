@@ -246,15 +246,61 @@ class Thirteen
 
   classify: (rawCards) ->
     cards = rawCards.map (raw) -> new Card(raw)
+    cards = cards.sort (a, b) -> return a.raw - b.raw
+    highestRaw = cards[cards.length - 1].raw
+
+    # look for a run of pairs
+    if (cards.length >= 6) and ((cards.length % 2) == 0)
+      foundRop = true
+      for card, cardIndex in cards
+        if cardIndex == 0
+          continue
+        if card.value == 12
+          # no 2s in a run
+          foundRop = false
+          break
+        if (cardIndex % 2) == 1
+          # odd card, must match last card exactly
+          if card.value != (cards[cardIndex - 1].value)
+            foundRop = false
+            break
+        else
+          # even card, must increment
+          if card.value != (cards[cardIndex - 1].value + 1)
+            foundRop = false
+            break
+
+      if foundRop
+        return {
+          type: 'rop' + Math.floor(cards.length / 2)
+          high: highestRaw
+        }
+
+    # look for a run
+    if cards.length >= 3
+      foundRun = true
+      for card, cardIndex in cards
+        if cardIndex == 0
+          continue
+        if card.value == 12
+          # no 2s in a run
+          foundRun = false
+          break
+        if card.value != (cards[cardIndex - 1].value + 1)
+          foundRun = false
+          break
+
+      if foundRun
+        return {
+          type: 'run' + cards.length
+          high: highestRaw
+        }
 
     # look for X of a kind
     reqValue = cards[0].value
-    highestRaw = cards[0].raw
     for card in cards
       if card.value != reqValue
         return null
-      if highestRaw < card.raw
-        highestRaw = card.raw
     type = 'kind' + cards.length
     return {
       type: type
