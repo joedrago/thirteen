@@ -63,6 +63,19 @@ cardsToString = (rawCards) ->
     cardNames.push card.name
   return "[ " + cardNames.join(',') + " ]"
 
+playTypeToString = (type) ->
+  if matches = type.match(/^run(\d+)/)
+    return "Run of #{matches[1]}"
+  if matches = type.match(/^kind(\d+)/)
+    if matches[1] == '1'
+      return 'Single'
+    if matches[1] == '2'
+      return 'Pair'
+    if matches[1] == '3'
+      return 'Trips'
+    return 'Quads'
+  return type
+
 # ---------------------------------------------------------------------------------------------------------------------------
 # Deck
 
@@ -439,13 +452,28 @@ class Thirteen
       return true
     return false
 
-  aiFindValueIndex: (cards, value) ->
-    for card, cardIndex in cards
-      if card.value == value
-        return cardIndex
-    return null
+  alCalcKinds: (hand, plays, match2s = false) ->
+    cards = hand.map (raw) -> new Card(raw)
+    cards = cards.sort (a, b) -> return a.raw - b.raw
+    valueArrays = []
+    for i in [0...13]
+      valueArrays.push []
+    for card in cards
+      valueArrays[card.value].push(card)
 
-  aiFindRuns: (hand, size) ->
+    hand = []
+    for valueArray, value in valueArrays
+      if (valueArray.length > 1) and (match2s or (value < 12))
+        key = "kind#{valueArray.length}"
+        plays[key] ?= []
+        plays[key].push valueArray.map (v) -> v.raw
+      else
+        for v in valueArray
+          hand.push v.raw
+
+    return hand
+
+  aiFindRuns: (hand, eachSize, size) ->
     runs = []
 
     cards = hand.map (raw) -> new Card(raw)
@@ -460,13 +488,14 @@ class Thirteen
     for startingValue in [0...lastStartingValue]
       runFound = true
       for offset in [0...size]
-        if valueArrays[startingValue+offset].length < 1
+        if valueArrays[startingValue+offset].length < eachSize
           runFound = false
           break
       if runFound
         run = []
         for offset in [0...size]
-          run.push(valueArrays[startingValue+offset].pop().raw)
+          for each in [0...eachSize]
+            run.push(valueArrays[startingValue+offset].pop().raw)
         runs.push run
 
     leftovers = []
@@ -475,26 +504,6 @@ class Thirteen
         leftovers.push card.raw
 
     return [runs, leftovers]
-
-  alCalcKinds: (hand, plays) ->
-    cards = hand.map (raw) -> new Card(raw)
-    cards = cards.sort (a, b) -> return a.raw - b.raw
-    valueArrays = []
-    for i in [0...13]
-      valueArrays.push []
-    for card in cards
-      valueArrays[card.value].push(card)
-
-    hand = []
-    for valueArray in valueArrays
-      if valueArray.length > 1
-        key = "kind#{valueArray.length}"
-        plays[key] ?= []
-        plays[key].push valueArray.map (v) -> v.raw
-      else if valueArray.length == 1
-        hand.push valueArray[0].raw
-
-    return hand
 
   aiCalcRuns: (hand, plays, smallRuns) ->
     if smallRuns
@@ -506,7 +515,7 @@ class Thirteen
       endSize = 3
       byAmount = -1
     for runSize in [startSize..endSize] by byAmount
-      [runs, leftovers] = @aiFindRuns(hand, runSize)
+      [runs, leftovers] = @aiFindRuns(hand, 1, runSize)
       if runs.length > 0
         key = "run#{runSize}"
         plays[key] = runs
@@ -514,20 +523,36 @@ class Thirteen
 
     return hand
 
-  aiCalcPlays: (hand, preferKinds = false, smallRuns = false) ->
+  aiCalcRops: (hand, plays) ->
+    startSize = 3
+    endSize = 6
+    for runSize in [startSize..endSize]
+      [rops, leftovers] = @aiFindRuns(hand, 2, runSize)
+      if rops.length > 0
+        key = "rop#{runSize}"
+        plays[key] = rops
+      hand = leftovers
+
+    return hand
+
+  aiCalcPlays: (hand, strategy = {}) ->
     plays = {}
 
-    if preferKinds
-      hand = @alCalcKinds(hand, plays)
-      hand = @aiCalcRuns(hand, plays, smallRuns)
+    # We always want to use rops if we have one
+    if strategy.seesRops
+      hand = @aiCalcRops(hand, plays)
+
+    if strategy.prefersRuns
+      hand = @aiCalcRuns(hand, plays, strategy.smallRuns)
+      hand = @alCalcKinds(hand, plays, strategy.match2s)
     else
-      hand = @aiCalcRuns(hand, plays, smallRuns)
-      hand = @alCalcKinds(hand, plays)
+      hand = @alCalcKinds(hand, plays, strategy.match2s)
+      hand = @aiCalcRuns(hand, plays, strategy.smallRuns)
 
     plays.kind1 = hand.map (v) -> [v]
     return plays
 
-  prettyPlays: (plays) ->
+  prettyPlays: (plays, extraPretty = false) ->
     pretty = {}
     for type, arr of plays
       pretty[type] = []
@@ -537,6 +562,16 @@ class Thirteen
           card = new Card(raw)
           names.push(card.name)
         pretty[type].push(names)
+    if extraPretty
+      s = ""
+      for typeName, throws of pretty
+        s += "      * #{playTypeToString(typeName)}:\n"
+        if typeName == 'kind1'
+          s += "        * #{throws.map((v) -> v[0]).join(',')}\n"
+        else
+          for t in throws
+            s += "        * #{t.join(',')}\n"
+      return s
     return JSON.stringify(pretty)
 
 # ---------------------------------------------------------------------------------------------------------------------------
@@ -561,10 +596,8 @@ class Thirteen
           @aiLog("already passed, going to keep passing")
           return @aiPass(currentPlayer)
 
-        plays = @aiCalcPlays(currentPlayer.hand, true)
-        @aiLog("possible plays (preferring kinds): #{@prettyPlays(plays)}")
-        plays = @aiCalcPlays(currentPlayer.hand, false)
-        @aiLog("possible plays (preferring runs): #{@prettyPlays(plays)}")
+        # plays = @aiCalcPlays(currentPlayer.hand)
+        # @aiLog("possible plays (preferring kinds): #{@prettyPlays(plays)}")
 
         if currentPlay and not everyonePassed
           if currentPlay.type != 'kind1'
@@ -586,6 +619,38 @@ class Thirteen
 
         @aiLog("nothing else to do, passing")
         return @aiPass(currentPlayer)
+
+# ---------------------------------------------------------------------------------------------------------------------------
+# Debug code
+
+debug = ->
+  thir = new Thirteen()
+
+  for attempt in [0...100]
+    deck = new ShuffledDeck()
+    hand = []
+    for j in [0...13]
+      raw = deck.cards.shift()
+      hand.push(raw)
+    # hand = [51,50,49,48,47,46,45,44,43,42,41,40,39]
+    # hand = [0,1,2,3,4,5,6,7,8,9,10,11,12]
+    hand.sort (a,b) -> return a - b
+
+    console.log("------------------------------------------------------------------------")
+    console.log("Hand #{attempt+1}: #{cardsToString(hand)}")
+    console.log("")
+
+    for bits in [0...16]
+      strategy =
+        smallRuns: (bits & 1) == 1
+        prefersRuns: (bits & 2) == 2
+        match2s: (bits & 4) == 4
+        seesRops: (bits & 8) == 8
+      console.log("   * Strategy: #{JSON.stringify(strategy)}")
+      plays = thir.aiCalcPlays(hand, strategy)
+      console.log(thir.prettyPlays(plays, true))
+
+# debug()
 
 # ---------------------------------------------------------------------------------------------------------------------------
 # Exports
