@@ -439,6 +439,106 @@ class Thirteen
       return true
     return false
 
+  aiFindValueIndex: (cards, value) ->
+    for card, cardIndex in cards
+      if card.value == value
+        return cardIndex
+    return null
+
+  aiFindRuns: (hand, size) ->
+    runs = []
+
+    cards = hand.map (raw) -> new Card(raw)
+    cards = cards.sort (a, b) -> return a.raw - b.raw
+    valueArrays = []
+    for i in [0...13]
+      valueArrays.push []
+    for card in cards
+      valueArrays[card.value].push(card)
+
+    lastStartingValue = 12 - size
+    for startingValue in [0...lastStartingValue]
+      runFound = true
+      for offset in [0...size]
+        if valueArrays[startingValue+offset].length < 1
+          runFound = false
+          break
+      if runFound
+        run = []
+        for offset in [0...size]
+          run.push(valueArrays[startingValue+offset].pop().raw)
+        runs.push run
+
+    leftovers = []
+    for valueArray in valueArrays
+      for card in valueArray
+        leftovers.push card.raw
+
+    return [runs, leftovers]
+
+  alCalcKinds: (hand, plays) ->
+    cards = hand.map (raw) -> new Card(raw)
+    cards = cards.sort (a, b) -> return a.raw - b.raw
+    valueArrays = []
+    for i in [0...13]
+      valueArrays.push []
+    for card in cards
+      valueArrays[card.value].push(card)
+
+    hand = []
+    for valueArray in valueArrays
+      if valueArray.length > 1
+        key = "kind#{valueArray.length}"
+        plays[key] ?= []
+        plays[key].push valueArray.map (v) -> v.raw
+      else if valueArray.length == 1
+        hand.push valueArray[0].raw
+
+    return hand
+
+  aiCalcRuns: (hand, plays, smallRuns) ->
+    if smallRuns
+      startSize = 3
+      endSize = 12
+      byAmount = 1
+    else
+      startSize = 12
+      endSize = 3
+      byAmount = -1
+    for runSize in [startSize..endSize] by byAmount
+      [runs, leftovers] = @aiFindRuns(hand, runSize)
+      if runs.length > 0
+        key = "run#{runSize}"
+        plays[key] = runs
+      hand = leftovers
+
+    return hand
+
+  aiCalcPlays: (hand, preferKinds = false, smallRuns = false) ->
+    plays = {}
+
+    if preferKinds
+      hand = @alCalcKinds(hand, plays)
+      hand = @aiCalcRuns(hand, plays, smallRuns)
+    else
+      hand = @aiCalcRuns(hand, plays, smallRuns)
+      hand = @alCalcKinds(hand, plays)
+
+    plays.kind1 = hand.map (v) -> [v]
+    return plays
+
+  prettyPlays: (plays) ->
+    pretty = {}
+    for type, arr of plays
+      pretty[type] = []
+      for play in arr
+        names = []
+        for raw in play
+          card = new Card(raw)
+          names.push(card.name)
+        pretty[type].push(names)
+    return JSON.stringify(pretty)
+
 # ---------------------------------------------------------------------------------------------------------------------------
 # AI Brains
 
@@ -460,6 +560,11 @@ class Thirteen
         if currentPlayer.pass
           @aiLog("already passed, going to keep passing")
           return @aiPass(currentPlayer)
+
+        plays = @aiCalcPlays(currentPlayer.hand, true)
+        @aiLog("possible plays (preferring kinds): #{@prettyPlays(plays)}")
+        plays = @aiCalcPlays(currentPlayer.hand, false)
+        @aiLog("possible plays (preferring runs): #{@prettyPlays(plays)}")
 
         if currentPlay and not everyonePassed
           if currentPlay.type != 'kind1'
