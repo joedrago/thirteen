@@ -549,7 +549,9 @@ class Thirteen
       hand = @alCalcKinds(hand, plays, strategy.match2s)
       hand = @aiCalcRuns(hand, plays, strategy.smallRuns)
 
-    plays.kind1 = hand.map (v) -> [v]
+    kind1 = hand.map (v) -> [v]
+    if kind1.length > 0
+      plays.kind1 = kind1
     return plays
 
   prettyPlays: (plays, extraPretty = false) ->
@@ -625,8 +627,10 @@ class Thirteen
 
 debug = ->
   thir = new Thirteen()
+  fullyPlayed = 0
+  totalAttempts = 100
 
-  for attempt in [0...100]
+  for attempt in [0...totalAttempts]
     deck = new ShuffledDeck()
     hand = []
     for j in [0...13]
@@ -640,15 +644,25 @@ debug = ->
     console.log("Hand #{attempt+1}: #{cardsToString(hand)}")
     console.log("")
 
+    foundFullyPlayed = false
     for bits in [0...16]
       strategy =
         smallRuns: (bits & 1) == 1
         prefersRuns: (bits & 2) == 2
         match2s: (bits & 4) == 4
         seesRops: (bits & 8) == 8
-      console.log("   * Strategy: #{JSON.stringify(strategy)}")
       plays = thir.aiCalcPlays(hand, strategy)
+
+      console.log("   * Strategy: #{JSON.stringify(strategy)}")
       console.log(thir.prettyPlays(plays, true))
+
+      if not plays.kind1
+        foundFullyPlayed = true
+
+    if foundFullyPlayed
+      fullyPlayed += 1
+
+  console.log "fullyPlayed: #{fullyPlayed} / #{totalAttempts}"
 
 # debug()
 
