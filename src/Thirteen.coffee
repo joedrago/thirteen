@@ -565,7 +565,7 @@ class Thirteen
       strategy =
         smallRuns: (bits & 1) == 1
         prefersRuns: (bits & 2) == 2
-        match2s: (bits & 4) == 4
+        match2s: false # (bits & 4) == 4
         seesRops: (bits & 8) == 8
       plays = @aiCalcPlays(hand, strategy)
       if bestPlays == null
