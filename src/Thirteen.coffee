@@ -554,6 +554,27 @@ class Thirteen
       plays.kind1 = kind1
     return plays
 
+  numberOfSingles: (plays) ->
+    if not plays.kind1?
+      return 0
+    return plays.kind1.length
+
+  aiCalcBestPlays: (hand) ->
+    bestPlays = null
+    for bits in [0...16]
+      strategy =
+        smallRuns: (bits & 1) == 1
+        prefersRuns: (bits & 2) == 2
+        match2s: (bits & 4) == 4
+        seesRops: (bits & 8) == 8
+      plays = @aiCalcPlays(hand, strategy)
+      if bestPlays == null
+        bestPlays = plays
+      else
+        if @numberOfSingles(plays) < @numberOfSingles(bestPlays)
+          bestPlays = plays
+    return bestPlays
+
   prettyPlays: (plays, extraPretty = false) ->
     pretty = {}
     for type, arr of plays
@@ -575,6 +596,13 @@ class Thirteen
             s += "        * #{t.join(',')}\n"
       return s
     return JSON.stringify(pretty)
+
+  highestCard: (play) ->
+    highest = 0
+    for p in play
+      if highest < p
+        highest = p
+    return highest
 
 # ---------------------------------------------------------------------------------------------------------------------------
 # AI Brains
@@ -598,17 +626,26 @@ class Thirteen
           @aiLog("already passed, going to keep passing")
           return @aiPass(currentPlayer)
 
-        # plays = @aiCalcPlays(currentPlayer.hand)
-        # @aiLog("possible plays (preferring kinds): #{@prettyPlays(plays)}")
+        plays = @aiCalcBestPlays(currentPlayer.hand)
+        @aiLog("best plays: #{@prettyPlays(plays)}")
 
         if currentPlay and not everyonePassed
-          if currentPlay.type != 'kind1'
-            @aiLog("unwilling to do anything but singles, passing")
+          if plays[currentPlay.type]? and (plays[currentPlay.type].length > 0)
+            for play in plays[currentPlay.type]
+              if @highestCard(play) > currentPlay.high
+                if @aiPlay(currentPlayer, play) == OK
+                  return OK
+            @aiLog("I guess I can't actually beat this, passing")
+            return @aiPass(currentPlayer)
+          else
+            @aiLog("I don't have that play, passing")
             return @aiPass(currentPlayer)
         else
           # no current play, throw the first card
-          @aiLog("I can do anything, throwing a single")
-          if @aiPlay(currentPlayer, [currentPlayer.hand[0]]) == OK
+          @aiLog("I can do anything, throwing a random play")
+          playTypes = Object.keys(plays)
+          playTypeIndex = Math.floor(Math.random() * playTypes.length)
+          if @aiPlay(currentPlayer, plays[playTypes[playTypeIndex]][0]) == OK
             return OK
 
         # find the first card that beats the currentPlay's high
