@@ -154,8 +154,8 @@ class Game
     }
 
     # TODO: ENABLE SAVING HERE
-    # if @thirteen?
-    #   state.thirteen = @thirteen.save()
+    if @thirteen?
+      state.thirteen = @thirteen.save()
 
     return JSON.stringify state
 
