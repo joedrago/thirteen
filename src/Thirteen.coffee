@@ -102,6 +102,8 @@ class Thirteen
     else
       # new game
       @log = []
+      @streak = 0
+      @lastStreak = 0
 
       @players = [
         { id: 1, name: 'Player', index: 0, pass: false }
@@ -146,7 +148,7 @@ class Thirteen
   # Thirteen methods
 
   save: ->
-    names = "log players turn pile pileWho throwID currentPlay".split(" ")
+    names = "log players turn pile pileWho throwID currentPlay streak lastStreak".split(" ")
     state = {}
     for name in names
       state[name] = this[name]
@@ -161,10 +163,13 @@ class Thirteen
     if @winner() != null
       return "Game Over"
 
-    if @currentPlay
-      playString = @currentPlay.type + " (#{@currentPlay.high})"
+    if @pile.length == 0
+      playString = "Anything with the 3S"
     else
-      playString = "Anything"
+      if @currentPlay
+        playString = @currentPlay.type + " (#{@currentPlay.high})"
+      else
+        playString = "Anything"
 
     currentPlayer = @currentPlayer()
     headline = playString + " to " + currentPlayer.name
@@ -320,6 +325,12 @@ class Thirteen
       high: highestRaw
     }
 
+  handHas3S: (hand) ->
+    for raw in hand
+      if raw == 0
+        return true
+    return false
+
   canPass: (params) ->
     if @winner() != null
       return 'gameOver'
@@ -328,12 +339,15 @@ class Thirteen
     if params.id != currentPlayer.id
       return 'notYourTurn'
 
+    if @pile.length == 0
+      return 'mustThrow3S'
+
     if @everyonePassed()
       return 'throwAnything'
 
     return OK
 
-  canPlay: (params, incomingPlay) ->
+  canPlay: (params, incomingPlay, handHas3S) ->
     if @winner() != null
       return 'gameOver'
 
@@ -341,17 +355,30 @@ class Thirteen
     if params.id != currentPlayer.id
       return 'notYourTurn'
 
-    currentPlayer = @currentPlayer()
-    if currentPlayer.pass
-      return 'mustPass'
-
     if incomingPlay == null
       return 'invalidPlay'
+
+    if @pile.length == 0
+      if not handHas3S
+        return 'mustThrow3S'
+
+    currentPlayer = @currentPlayer()
+    if currentPlayer.pass
+      if @currentPlay and @canBeBroken(@currentPlay)
+        if @isBreakerType(incomingPlay.type)
+          return OK
+        else
+          return 'mustBreakOrPass'
+      return 'mustPass'
 
     if @currentPlay == null
       return OK
 
     if @everyonePassed()
+      return OK
+
+    if @canBeBroken(@currentPlay) and @isBreakerType(incomingPlay.type)
+      # 2 breaker!
       return OK
 
     if incomingPlay.type != @currentPlay.type
@@ -367,14 +394,18 @@ class Thirteen
     console.log "incomingPlay", incomingPlay
 
     console.log "someone calling play", params
-    ret = @canPlay(params, incomingPlay)
+    ret = @canPlay(params, incomingPlay, @handHas3S(params.cards))
     if ret != OK
       return ret
 
     # TODO: make pretty names based on the play, add play to headline
     verb = "continues with"
     if @currentPlay
-      if (incomingPlay.type != @currentPlay.type) or (incomingPlay.high < @currentPlay.high)
+      if @canBeBroken(@currentPlay) and @isBreakerType(incomingPlay.type)
+        # 2 breaker!
+        @unpassAll()
+        verb = "breaks 2 with"
+      else if (incomingPlay.type != @currentPlay.type) or (incomingPlay.high < @currentPlay.high)
         # New play!
         @unpassAll()
         verb = "throws new play"
@@ -389,6 +420,12 @@ class Thirteen
 
     if currentPlayer.hand.length == 0
       @output("#{currentPlayer.name} wins!")
+      if currentPlayer.ai
+        @lastStreak = @streak
+        @streak = 0
+      else
+        @streak += 1
+        @lastStreak = @streak
 
     @pile = params.cards.slice(0)
     @pileWho = @turn
@@ -440,7 +477,9 @@ class Thirteen
 
     currentPlayer = @currentPlayer()
     if not currentPlayer.ai
-      if currentPlayer.pass
+      if @currentPlay and (@currentPlay.type == 'kind1') and @hasBreaker(currentPlayer.hand)
+        # do nothing, player can drop a breaker
+      else if currentPlayer.pass
         @aiLog("autopassing for player")
         @aiPass(currentPlayer)
         return true
@@ -559,6 +598,28 @@ class Thirteen
       return 0
     return plays.kind1.length
 
+  breakerPlays: (hand) ->
+    return @aiCalcPlays(hand, { seesRops: true, prefersRuns: false })
+
+  isBreakerType: (playType) ->
+    if playType.match(/^rop/) or playType == 'kind4'
+      return true
+    return false
+
+  canBeBroken: (play) ->
+    if play.type != 'kind1'
+      return false
+    card = new Card(play.high)
+    return (card.value == 12)
+
+  hasBreaker: (hand) ->
+    plays = @breakerPlays(hand)
+    for playType, playlist of plays
+      if @isBreakerType(playType)
+        if playlist.length > 0
+          return true
+    return false
+
   aiCalcBestPlays: (hand) ->
     bestPlays = null
     for bits in [0...16]
@@ -604,6 +665,15 @@ class Thirteen
         highest = p
     return highest
 
+  findPlayWith3S: (plays) ->
+    for playType, playlist of plays
+      for play in playlist
+        if @handHas3S(play)
+          return play
+
+    console.log "findPlayWith3S: something impossible is happening"
+    return []
+
 # ---------------------------------------------------------------------------------------------------------------------------
 # AI Brains
 
@@ -623,11 +693,25 @@ class Thirteen
       # normal
       play: (currentPlayer, currentPlay, everyonePassed) ->
         if currentPlayer.pass
+          if @canBeBroken(currentPlay) and @hasBreaker(currentPlayer.hand)
+            breakerPlays = @breakerPlays(currentPlayer.hand)
+            for playType, playlist of breakerPlays
+              if (playType.match(/^rop/) or (playType == 'kind4')) and (playlist.length > 0)
+                @aiLog("breaking 2")
+                if @aiPlay(currentPlayer, playlist[0]) == OK
+                  return OK
+
           @aiLog("already passed, going to keep passing")
           return @aiPass(currentPlayer)
 
         plays = @aiCalcBestPlays(currentPlayer.hand)
         @aiLog("best plays: #{@prettyPlays(plays)}")
+
+        if @pile.length == 0
+          play = @findPlayWith3S(plays)
+          @aiLog("Throwing my play with the 3S in it")
+          if @aiPlay(currentPlayer, play) == OK
+            return OK
 
         if currentPlay and not everyonePassed
           if plays[currentPlay.type]? and (plays[currentPlay.type].length > 0)

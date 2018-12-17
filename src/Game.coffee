@@ -244,8 +244,8 @@ class Game
   gameOverText: ->
     winner = @thirteen.winner()
     if winner.name == "Player"
-      return ["You win!"]
-    return ["#{winner.name} wins!"]
+      return ["You win!", "#{@thirteen.lastStreak} in a row"]
+    return ["#{winner.name} wins!", "#{@thirteen.lastStreak} in a row"]
   # -----------------------------------------------------------------------------------------------------
   # card handling
 
