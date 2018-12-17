@@ -171,7 +171,7 @@ class Thirteen
       return "Game Over"
 
     if @pile.length == 0
-      playString = "throw Anything with the 3S"
+      playString = "throw Anything with the 3\xc8"
     else
       if @currentPlay
         playString = "beat " + playToString(@currentPlay)
