@@ -11,6 +11,7 @@ Suit =
 
 SuitName = ['Spades', 'Clubs', 'Diamonds', 'Hearts']
 ShortSuitName = ['S', 'C', 'D', 'H']
+GlyphSuitName = ["\xc8", "\xc9", "\xca", "\xcb"]
 
 # ---------------------------------------------------------------------------------------------------------------------------
 # AI Name Generator
@@ -55,6 +56,8 @@ class Card
         String(@value + 3)
     @name = @valueName + ShortSuitName[@suit]
     # console.log "#{@raw} -> #{@name}"
+  glyphedName: ->
+    return @valueName + GlyphSuitName[@suit]
 
 cardsToString = (rawCards) ->
   cardNames = []
@@ -75,6 +78,10 @@ playTypeToString = (type) ->
       return 'Trips'
     return 'Quads'
   return type
+
+playToString = (play) ->
+  highCard = new Card(play.high)
+  return "#{playTypeToString(play.type)} - #{highCard.glyphedName()}"
 
 # ---------------------------------------------------------------------------------------------------------------------------
 # Deck
@@ -164,15 +171,15 @@ class Thirteen
       return "Game Over"
 
     if @pile.length == 0
-      playString = "Anything with the 3S"
+      playString = "throw Anything with the 3S"
     else
       if @currentPlay
-        playString = @currentPlay.type + " (#{@currentPlay.high})"
+        playString = "beat " + playToString(@currentPlay)
       else
-        playString = "Anything"
+        playString = "throw Anything"
 
     currentPlayer = @currentPlayer()
-    headline = playString + " to " + currentPlayer.name
+    headline = "#{currentPlayer.name} to #{playString}"
     return headline
 
   findPlayer: (id) ->
@@ -399,16 +406,18 @@ class Thirteen
       return ret
 
     # TODO: make pretty names based on the play, add play to headline
-    verb = "continues with"
+    verb = "throws:"
     if @currentPlay
       if @canBeBroken(@currentPlay) and @isBreakerType(incomingPlay.type)
         # 2 breaker!
         @unpassAll()
-        verb = "breaks 2 with"
+        verb = "breaks 2:"
       else if (incomingPlay.type != @currentPlay.type) or (incomingPlay.high < @currentPlay.high)
         # New play!
         @unpassAll()
-        verb = "throws new play"
+        verb = "throws new:"
+    else
+      verb = "begins:"
 
     @currentPlay = incomingPlay
 
@@ -416,7 +425,7 @@ class Thirteen
     currentPlayer = @currentPlayer()
     currentPlayer.hand = @removeCards(currentPlayer.hand, params.cards)
 
-    @output("#{currentPlayer.name} #{verb} #{cardsToString(params.cards)}")
+    @output("#{currentPlayer.name} #{verb} #{playToString(incomingPlay)}")
 
     if currentPlayer.hand.length == 0
       @output("#{currentPlayer.name} wins!")
@@ -596,7 +605,11 @@ class Thirteen
   numberOfSingles: (plays) ->
     if not plays.kind1?
       return 0
-    return plays.kind1.length
+    nonTwoSingles = 0
+    for raw in plays.kind1
+      if raw < 48
+        nonTwoSingles += 1
+    return nonTwoSingles
 
   breakerPlays: (hand) ->
     return @aiCalcPlays(hand, { seesRops: true, prefersRuns: false })
@@ -626,14 +639,20 @@ class Thirteen
       strategy =
         smallRuns: (bits & 1) == 1
         prefersRuns: (bits & 2) == 2
-        match2s: false # (bits & 4) == 4
+        match2s: (bits & 4) == 4
         seesRops: (bits & 8) == 8
       plays = @aiCalcPlays(hand, strategy)
       if bestPlays == null
         bestPlays = plays
       else
-        if @numberOfSingles(plays) < @numberOfSingles(bestPlays)
+        np = @numberOfSingles(plays)
+        nbp = @numberOfSingles(bestPlays)
+        if np < nbp
           bestPlays = plays
+        else if np == nbp
+          # flip a coin!
+          if Math.floor(Math.random() * 2) == 0
+            bestPlays = plays
     return bestPlays
 
   prettyPlays: (plays, extraPretty = false) ->

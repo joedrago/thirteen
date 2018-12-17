@@ -92,3 +92,9 @@ module.exports =
       '56' : { x: 384, y: 129, width:  35, height:  53, xoffset:   2, yoffset:  20, xadvance:  36 }
       '57' : { x: 402, y:   8, width:  35, height:  53, xoffset:   3, yoffset:  20, xadvance:  36 }
       '32' : { x:   0, y:   0, width:   0, height:   0, xoffset:   3, yoffset:  20, xadvance:  22 }
+
+      # card glyphs
+      '200': { x: 396, y: 378, width:  40, height:  49, xoffset:   3, yoffset:  21, xadvance:  43 } # S
+      '201': { x: 447, y: 313, width:  49, height:  50, xoffset:   3, yoffset:  21, xadvance:  52 } # C
+      '202': { x: 399, y: 313, width:  36, height:  53, xoffset:   3, yoffset:  21, xadvance:  39 } # D
+      '203': { x: 452, y: 381, width:  39, height:  43, xoffset:   3, yoffset:  21, xadvance:  42 } # H

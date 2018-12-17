@@ -196,21 +196,15 @@ class Game
   # headline (game state in top left)
 
   prettyErrorTable: {
-    # bidOutOfRange:      "You are somehow bidding an impossible value. The game must be broken."
-    # dealerFucked:       "Dealer restriction: You may not make total bids match total tricks."
-    # doNotHave:          "You are somehow attempting to play a card you don't own. The game must be broken."
-    # forcedHigherInSuit: "You have a higher value in the lead suit. You must play it. (Rule 2)"
-    # forcedInSuit:       "You have at least one of the lead suit. You must play it. (Rule 1)"
-    # gameOver:           "The game is over.  The game must be broken."
-    # indexOutOfRange:    "You don't have that index. The game must be broken."
-    # lowestCardRequired: "You must start the round with the lowest card you have."
-    # nextIsConfused:     "Interal error. The game must be broken."
-    # noNext:             "Interal error. The game must be broken."
-    # notBiddingNow:      "You are trying to bid during the wrong phase."
-    # notEnoughPlayers:   "Cannot start the game without more players."
-    # notInTrick:         "You are trying to play a card during the wrong phase."
-    # notYourTurn:        "It isn't your turn."
-    # trumpNotBroken:     "Trump isn't broken yet. Lead with a non-spade."
+      gameOver:           "The game is over."
+      invalidPlay:        "Not a valid play."
+      mustBreakOrPass:    "You passed already, so 2-breaker or pass."
+      mustPass:           "You must pass."
+      mustThrow3S:        "You must use the 3\xc8 in your play."
+      notYourTurn:        "It is not your turn."
+      throwAnything:      "You have control, throw anything."
+      tooLowPlay:         "This play is not stronger than the current play."
+      wrongPlay:          "This play does not match the current play."
   }
 
   prettyError: ->
@@ -234,7 +228,7 @@ class Game
 
     errText = ""
     if (@lastErr.length > 0) and (@lastErr != OK)
-      errText = "  ERROR: `ff0000`#{@prettyError()}"
+      errText = "  `ffffff`ERROR: `ff0000`#{@prettyError()}"
       headline += errText
 
     return headline
