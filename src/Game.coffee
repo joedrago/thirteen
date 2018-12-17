@@ -155,6 +155,7 @@ class Game
 
     # TODO: ENABLE SAVING HERE
     if @thirteen?
+      @thirteen.updatePlayerHand(@hand.cards)
       state.thirteen = @thirteen.save()
 
     return JSON.stringify state
