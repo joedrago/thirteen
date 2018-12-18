@@ -186,6 +186,8 @@ class Thirteen
     else
       playerColor = 'ff7700'
     headline = "`#{playerColor}`#{currentPlayer.name}`ffffff` to #{playString}"
+    if @everyonePassed()
+      headline += " (or throw anything)"
     return headline
 
   findPlayer: (id) ->
