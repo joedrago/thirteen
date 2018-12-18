@@ -1,5 +1,5 @@
 MIN_PLAYERS = 3
-MAX_LOG_LINES = 7
+MAX_LOG_LINES = 6
 OK = 'OK'
 
 Suit =
@@ -165,7 +165,7 @@ class Thirteen
 
   output: (text) ->
     @log.push text
-    if @log.length > MAX_LOG_LINES
+    while @log.length > MAX_LOG_LINES
       @log.shift()
 
   headline: ->
@@ -181,7 +181,11 @@ class Thirteen
         playString = "throw Anything"
 
     currentPlayer = @currentPlayer()
-    headline = "#{currentPlayer.name} to #{playString}"
+    if currentPlayer.ai
+      playerColor = 'b0b000'
+    else
+      playerColor = 'ff7700'
+    headline = "`#{playerColor}`#{currentPlayer.name}`ffffff` to #{playString}"
     return headline
 
   findPlayer: (id) ->

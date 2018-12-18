@@ -32,6 +32,7 @@ class Game
       orange:     { r:   1, g: 0.5, b:   0, a:   1 }
       gold:       { r:   1, g:   1, b:   0, a:   1 }
       buttontext: { r:   1, g:   1, b:   1, a:   1 }
+      logcolor:   { r: 0.5, g: 0.5, b: 0.5, a:   1 }
       lightgray:  { r: 0.5, g: 0.5, b: 0.5, a:   1 }
       background: { r:   0, g: 0.2, b:   0, a:   1 }
       pile:       { r: 0.4, g: 0.2, b:   0, a:   1 }
@@ -175,6 +176,7 @@ class Game
     @hand = new Hand this
     @pile = new Pile this, @hand
     @hand.set @thirteen.players[0].hand
+    @lastErr = ''
 
   # -----------------------------------------------------------------------------------------------------
   # input handling
@@ -367,7 +369,7 @@ class Game
 
     # Log
     for line, i in @thirteen.log
-      @fontRenderer.render @font, textHeight, line, 0, (i+1) * (textHeight + textPadding), 0, 0, @colors.white
+      @fontRenderer.render @font, textHeight, line, 0, (i+1.5) * (textHeight + textPadding), 0, 0, @colors.logcolor
 
     aiPlayers = [
       @thirteen.players[1]
@@ -486,13 +488,6 @@ class Game
 
   renderAIHand: (cardCount, countHeight, x, y, anchorx, anchory) ->
     # TODO: make this draw a tiny hand of cards on the AI chars
-
-    # cardHeight = Math.floor(@height * CARD_RENDER_SCALE)
-    # cardWidth  = Math.floor(cardHeight * CARD_IMAGE_W / CARD_IMAGE_H)
-    # @game.drawImage "cards",
-    # Hand.CARD_IMAGE_OFF_X + (Hand.CARD_IMAGE_ADV_X * rank), Hand.CARD_IMAGE_OFF_Y + (Hand.CARD_IMAGE_ADV_Y * suit), Hand.CARD_IMAGE_W, Hand.CARD_IMAGE_H,
-    # x, y, @cardWidth * scale, @cardHeight * scale,
-    # rot, 0.5, 0.5, 1,1,1,1, cb
 
   # -----------------------------------------------------------------------------------------------------
   # rendering and zones
