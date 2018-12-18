@@ -40,6 +40,7 @@ class Game
       arrowclose: { r:   1, g: 0.5, b:   0, a: 0.3 }
       hand_pick:  { r:   0, g: 0.1, b:   0, a: 1.0 }
       hand_reorg: { r: 0.4, g:   0, b:   0, a: 1.0 }
+      play_again: { r:   0, g:   0, b:   0, a: 0.7 }
       overlay:    { r:   0, g:   0, b:   0, a: 0.6 }
       mainmenu:   { r: 0.1, g: 0.1, b: 0.1, a:   1 }
       pausemenu:  { r: 0.1, g: 0.0, b: 0.1, a:   1 }
@@ -427,12 +428,14 @@ class Game
         gameOverY += gameOverSize
         @fontRenderer.render @font, gameOverSize, lines[1], @center.x, gameOverY, 0.5, 0.5, @colors.orange
 
+      @spriteRenderer.render "solid", 0, @height, @width, handAreaHeight, 0, 0, 1, @colors.play_again, =>
+        @thirteen.deal()
+        @prepareGame()
+
       restartQuitSize = @aaHeight / 12
       shadowDistance = restartQuitSize / 8
       @fontRenderer.render @font, restartQuitSize, "Play Again", shadowDistance + @center.x, shadowDistance + (@height - (handAreaHeight * 0.5)), 0.5, 1, @colors.black, =>
-      @fontRenderer.render @font, restartQuitSize, "Play Again", @center.x, @height - (handAreaHeight * 0.5), 0.5, 1, @colors.gold, =>
-        @thirteen.deal()
-        @prepareGame()
+      @fontRenderer.render @font, restartQuitSize, "Play Again", @center.x, @height - (handAreaHeight * 0.5), 0.5, 1, @colors.gold
 
     # Headline (includes error)
     @fontRenderer.render @font, textHeight, @calcHeadline(), 0, 0, 0, 0, @colors.lightgray
