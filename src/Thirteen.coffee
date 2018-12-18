@@ -67,6 +67,8 @@ cardsToString = (rawCards) ->
   return "[ " + cardNames.join(',') + " ]"
 
 playTypeToString = (type) ->
+  if matches = type.match(/^rop(\d+)/)
+    return "Run of #{matches[1]} Pairs"
   if matches = type.match(/^run(\d+)/)
     return "Run of #{matches[1]}"
   if matches = type.match(/^kind(\d+)/)
@@ -91,9 +93,10 @@ class ShuffledDeck
     # dat inside-out shuffle!
     @cards = [ 0 ]
     for i in [1...52]
-      j = Math.floor(Math.random() * i)
-      @cards.push(@cards[j])
-      @cards[j] = i
+      @cards.push i
+      # j = Math.floor(Math.random() * i)
+      # @cards.push(@cards[j])
+      # @cards[j] = i
 
 # ---------------------------------------------------------------------------------------------------------------------------
 # Thirteen
