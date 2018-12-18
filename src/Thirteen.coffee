@@ -93,10 +93,9 @@ class ShuffledDeck
     # dat inside-out shuffle!
     @cards = [ 0 ]
     for i in [1...52]
-      @cards.push i
-      # j = Math.floor(Math.random() * i)
-      # @cards.push(@cards[j])
-      # @cards[j] = i
+      j = Math.floor(Math.random() * i)
+      @cards.push(@cards[j])
+      @cards[j] = i
 
 # ---------------------------------------------------------------------------------------------------------------------------
 # Thirteen
