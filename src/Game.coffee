@@ -434,7 +434,7 @@ class Game
 
       restartQuitSize = @aaHeight / 12
       shadowDistance = restartQuitSize / 8
-      @fontRenderer.render @font, restartQuitSize, "Play Again", shadowDistance + @center.x, shadowDistance + (@height - (handAreaHeight * 0.5)), 0.5, 1, @colors.black, =>
+      @fontRenderer.render @font, restartQuitSize, "Play Again", shadowDistance + @center.x, shadowDistance + (@height - (handAreaHeight * 0.5)), 0.5, 1, @colors.black
       @fontRenderer.render @font, restartQuitSize, "Play Again", @center.x, @height - (handAreaHeight * 0.5), 0.5, 1, @colors.gold
 
     # Headline (includes error)
