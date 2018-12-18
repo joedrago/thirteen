@@ -52,8 +52,6 @@ class Game
       "darkforest": 1
       "chars": 2
       "howto1": 3
-      "howto2": 4
-      "howto3": 5
 
     @thirteen = null
     @lastErr = ''
@@ -340,19 +338,20 @@ class Game
     howtoTexture = "howto#{@howto}"
     @log "rendering #{howtoTexture}"
     @spriteRenderer.render "solid", 0, 0, @width, @height, 0, 0, 0, @colors.black
-    @spriteRenderer.render howtoTexture, 0, 0, @width, @aaHeight, 0, 0, 0, @colors.white
-    arrowWidth = @width / 20
-    arrowOffset = arrowWidth * 4
-    color = if @howto == 1 then @colors.arrowclose else @colors.arrow
-    @spriteRenderer.render "arrowL", @center.x - arrowOffset, @height, arrowWidth, 0, 0, 0.5, 1, color, =>
-      @howto--
-      if @howto < 0
-        @howto = 0
-    color = if @howto == 3 then @colors.arrowclose else @colors.arrow
-    @spriteRenderer.render "arrowR", @center.x + arrowOffset, @height, arrowWidth, 0, 0, 0.5, 1, color, =>
-      @howto++
-      if @howto > 3
-        @howto = 0
+    @spriteRenderer.render howtoTexture, 0, 0, @width, @aaHeight, 0, 0, 0, @colors.white, =>
+      @howto = 0
+    # arrowWidth = @width / 20
+    # arrowOffset = arrowWidth * 4
+    # color = if @howto == 1 then @colors.arrowclose else @colors.arrow
+    # @spriteRenderer.render "arrowL", @center.x - arrowOffset, @height, arrowWidth, 0, 0, 0.5, 1, color, =>
+    #   @howto--
+    #   if @howto < 0
+    #     @howto = 0
+    # color = if @howto == 3 then @colors.arrowclose else @colors.arrow
+    # @spriteRenderer.render "arrowR", @center.x + arrowOffset, @height, arrowWidth, 0, 0, 0.5, 1, color, =>
+    #   @howto++
+    #   if @howto > 3
+    #     @howto = 0
 
   renderMainMenu: ->
     @mainMenu.render()
