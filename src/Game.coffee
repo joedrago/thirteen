@@ -26,28 +26,28 @@ class Game
     @log "height: #{@height}. height if screen was 16:9 (aspect adjusted): #{@aaHeight}"
     @pauseButtonSize = @aaHeight / 15
     @colors =
-      white:      { r:   1, g:   1, b:   1, a:   1 }
-      black:      { r:   0, g:   0, b:   0, a:   1 }
-      red:        { r:   1, g:   0, b:   0, a:   1 }
-      orange:     { r:   1, g: 0.5, b:   0, a:   1 }
-      gold:       { r:   1, g:   1, b:   0, a:   1 }
-      buttontext: { r:   1, g:   1, b:   1, a:   1 }
-      logcolor:   { r: 0.5, g: 0.5, b: 0.5, a:   1 }
-      lightgray:  { r: 0.5, g: 0.5, b: 0.5, a:   1 }
-      background: { r:   0, g: 0.2, b:   0, a:   1 }
-      pile:       { r: 0.4, g: 0.2, b:   0, a:   1 }
-      logbg:      { r: 0.1, g:   0, b:   0, a:   1 }
       arrow:      { r:   1, g:   1, b:   1, a:   1 }
       arrowclose: { r:   1, g: 0.5, b:   0, a: 0.3 }
+      background: { r:   0, g: 0.2, b:   0, a:   1 }
+      bid:        { r:   0, g: 0.6, b:   0, a:   1 }
+      black:      { r:   0, g:   0, b:   0, a:   1 }
+      buttontext: { r:   1, g:   1, b:   1, a:   1 }
+      game_over:  { r:   1, g: 0.5, b:   0, a:   1 }
+      gold:       { r:   1, g:   1, b:   0, a:   1 }
+      hand_any:   { r:   0, g:   0, b: 0.2, a: 1.0 }
       hand_pick:  { r:   0, g: 0.1, b:   0, a: 1.0 }
       hand_reorg: { r: 0.4, g:   0, b:   0, a: 1.0 }
-      hand_any:   { r:   0, g:   0, b: 0.2, a: 1.0 }
-      play_again: { r:   0, g:   0, b:   0, a: 0.7 }
-      overlay:    { r:   0, g:   0, b:   0, a: 0.6 }
+      lightgray:  { r: 0.5, g: 0.5, b: 0.5, a:   1 }
+      logbg:      { r: 0.1, g:   0, b:   0, a:   1 }
+      logcolor:   { r: 0.5, g: 0.5, b: 0.5, a:   1 }
       mainmenu:   { r: 0.1, g: 0.1, b: 0.1, a:   1 }
+      orange:     { r:   1, g: 0.5, b:   0, a:   1 }
+      overlay:    { r:   0, g:   0, b:   0, a: 0.6 }
       pausemenu:  { r: 0.1, g: 0.0, b: 0.1, a:   1 }
-      bid:        { r:   0, g: 0.6, b:   0, a:   1 }
-      game_over:  { r: 0.6, g: 0.9, b:   1, a:   1 }
+      pile:       { r: 0.4, g: 0.2, b:   0, a:   1 }
+      play_again: { r:   0, g:   0, b:   0, a: 0.6 }
+      red:        { r:   1, g:   0, b:   0, a:   1 }
+      white:      { r:   1, g:   1, b:   1, a:   1 }
 
     @textures =
       "cards": 0
@@ -247,7 +247,7 @@ class Game
       return ["You win!", "#{@thirteen.lastStreak} in a row!"]
     if @thirteen.lastStreak == 0
       return ["#{winner.name} wins!", "Try again..."]
-    return ["#{winner.name} wins!", "Last streak: #{@thirteen.lastStreak} wins"]
+    return ["#{winner.name} wins!", "Streak ended: #{@thirteen.lastStreak} wins"]
   # -----------------------------------------------------------------------------------------------------
   # card handling
 
@@ -433,6 +433,8 @@ class Game
     @renderCount @thirteen.players[0], 0 == @thirteen.turn, countHeight, @center.x, @height, 0.5, 1
 
     if @thirteen.winner() and @pile.resting()
+      # @spriteRenderer.render "solid", 0, 0, @width, @height - handAreaHeight, 0, 0, 0, @colors.play_again
+
       lines = @gameOverText()
       gameOverSize = @aaHeight / 8
       gameOverY = @center.y

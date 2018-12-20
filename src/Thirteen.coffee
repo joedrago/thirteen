@@ -85,6 +85,15 @@ playToString = (play) ->
   highCard = new Card(play.high)
   return "#{playTypeToString(play.type)} - #{highCard.glyphedName()}"
 
+playToCardCount = (play) ->
+  if matches = play.type.match(/^rop(\d+)/)
+    return parseInt(matches[1]) * 2
+  if matches = play.type.match(/^run(\d+)/)
+    return parseInt(matches[1])
+  if matches = play.type.match(/^kind(\d+)/)
+    return parseInt(matches[1])
+  return 1 # ??
+
 # ---------------------------------------------------------------------------------------------------------------------------
 # Deck
 
@@ -461,7 +470,9 @@ class Thirteen
       return ret
 
     currentPlayer = @currentPlayer()
-    if currentPlayer.pass
+    if @currentPlay and (playToCardCount(@currentPlay) > currentPlayer.hand.length)
+      @output("#{currentPlayer.name} auto-passes (too few cards)")
+    else if currentPlayer.pass
       @output("#{currentPlayer.name} auto-passes")
     else
       @output("#{currentPlayer.name} passes")
@@ -496,6 +507,10 @@ class Thirteen
     if not currentPlayer.ai
       if @currentPlay and (@currentPlay.type == 'kind1') and @hasBreaker(currentPlayer.hand)
         # do nothing, player can drop a breaker
+      else if @currentPlay and (playToCardCount(@currentPlay) > currentPlayer.hand.length)
+        @aiLog("autopassing for player, not enough cards")
+        @aiPass(currentPlayer)
+        return true
       else if currentPlayer.pass
         @aiLog("autopassing for player")
         @aiPass(currentPlayer)
