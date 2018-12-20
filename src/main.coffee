@@ -88,7 +88,7 @@ class NativeApp
     ctx.drawImage(img, 0, 0)
     fillColor = "rgb(#{Math.floor(red*255)}, #{Math.floor(green*255)}, #{Math.floor(blue*255)})"
     ctx.fillStyle = fillColor
-    console.log "fillColor #{fillColor}"
+    # console.log "fillColor #{fillColor}"
     ctx.globalCompositeOperation = 'multiply'
     ctx.fillRect(0, 0, buff.width, buff.height)
     ctx.globalCompositeOperation = 'copy'

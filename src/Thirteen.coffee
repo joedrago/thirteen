@@ -135,7 +135,7 @@ class Thirteen
           @turn = playerIndex
         player.hand.push(raw)
 
-      console.log "@game.options.sortIndex #{@game.options.sortIndex}"
+      # console.log "@game.options.sortIndex #{@game.options.sortIndex}"
       if (@game.options.sortIndex == 0) or player.ai
         # Normal
         player.hand.sort (a,b) -> return a - b

@@ -41,11 +41,13 @@ class Game
       arrowclose: { r:   1, g: 0.5, b:   0, a: 0.3 }
       hand_pick:  { r:   0, g: 0.1, b:   0, a: 1.0 }
       hand_reorg: { r: 0.4, g:   0, b:   0, a: 1.0 }
+      hand_any:   { r:   0, g:   0, b: 0.2, a: 1.0 }
       play_again: { r:   0, g:   0, b:   0, a: 0.7 }
       overlay:    { r:   0, g:   0, b:   0, a: 0.6 }
       mainmenu:   { r: 0.1, g: 0.1, b: 0.1, a:   1 }
       pausemenu:  { r: 0.1, g: 0.0, b: 0.1, a:   1 }
       bid:        { r:   0, g: 0.6, b:   0, a:   1 }
+      game_over:  { r: 0.6, g: 0.9, b:   1, a:   1 }
 
     @textures =
       "cards": 0
@@ -240,8 +242,12 @@ class Game
   gameOverText: ->
     winner = @thirteen.winner()
     if winner.name == "Player"
-      return ["You win!", "#{@thirteen.lastStreak} in a row"]
-    return ["#{winner.name} wins!", "#{@thirteen.lastStreak} in a row"]
+      if @thirteen.lastStreak == 1
+        return ["You win!", "A new streak!"]
+      return ["You win!", "#{@thirteen.lastStreak} in a row!"]
+    if @thirteen.lastStreak == 0
+      return ["#{winner.name} wins!", "Try again..."]
+    return ["#{winner.name} wins!", "Last streak: #{@thirteen.lastStreak} wins"]
   # -----------------------------------------------------------------------------------------------------
   # card handling
 
@@ -402,9 +408,17 @@ class Game
 
     # card area
     handAreaHeight = 0.27 * @height
+    cardAreaText = null
     if @hand.picking
       handareaColor = @colors.hand_pick
+      if (@thirteen.turn == 0) and (@thirteen.everyonePassed() or (@thirteen.pile.length == 0))
+        handareaColor = @colors.hand_any
+        if @thirteen.pile.length == 0
+          cardAreaText = 'Anything (3\xc8)'
+        else
+          cardAreaText = 'Anything'
     else
+      cardAreaText = 'Unlocked'
       handareaColor = @colors.hand_reorg
     @spriteRenderer.render "solid", 0, @height, @width, handAreaHeight, 0, 0, 1, handareaColor, =>
       @hand.togglePicking()
@@ -424,10 +438,10 @@ class Game
       gameOverY = @center.y
       if lines.length > 1
         gameOverY -= (gameOverSize >> 1)
-      @fontRenderer.render @font, gameOverSize, lines[0], @center.x, gameOverY, 0.5, 0.5, @colors.orange
+      @fontRenderer.render @font, gameOverSize, lines[0], @center.x, gameOverY, 0.5, 0.5, @colors.game_over
       if lines.length > 1
         gameOverY += gameOverSize
-        @fontRenderer.render @font, gameOverSize, lines[1], @center.x, gameOverY, 0.5, 0.5, @colors.orange
+        @fontRenderer.render @font, gameOverSize, lines[1], @center.x, gameOverY, 0.5, 0.5, @colors.game_over
 
       @spriteRenderer.render "solid", 0, @height, @width, handAreaHeight, 0, 0, 1, @colors.play_again, =>
         @thirteen.deal()
@@ -444,8 +458,8 @@ class Game
     @spriteRenderer.render "pause", @width, 0, 0, @pauseButtonSize, 0, 1, 0, @colors.white, =>
       @paused = true
 
-    if not @hand.picking
-      @fontRenderer.render @font, textHeight, "Unlocked", 0.02 * @width, @height - handAreaHeight, 0, 0, @colors.white
+    if cardAreaText != null
+      @fontRenderer.render @font, textHeight, cardAreaText, 0.02 * @width, @height - handAreaHeight, 0, 0, @colors.white
 
     if @paused
       @pauseMenu.render()
