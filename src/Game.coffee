@@ -425,7 +425,10 @@ class Game
 
     # pile
     pileDimension = @height * 0.4
-    @spriteRenderer.render "pile", @width / 2, @height / 2, pileDimension, pileDimension, 0, 0.5, 0.5, @colors.white, =>
+    pileSprite = "pile"
+    if (@thirteen.turn >= 0) and (@thirteen.turn <= 3)
+      pileSprite += @thirteen.turn
+    @spriteRenderer.render pileSprite, @width / 2, @height / 2, pileDimension, pileDimension, 0, 0.5, 0.5, @colors.white, =>
       @playPicked()
     @pile.render()
 

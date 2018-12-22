@@ -12,7 +12,12 @@ class SpriteRenderer
       minus1:    { texture: "chars", x: 895, y: 820, w: 116, h: 118 }
       arrowL:    { texture: "chars", x:  33, y: 858, w: 204, h: 156 }
       arrowR:    { texture: "chars", x: 239, y: 852, w: 208, h: 155 }
-      pile:      { texture: "chars", x: 513, y: 875, w: 128, h: 128 }
+
+      pile:      { texture: "chars", x:  13, y: 883, w: 128, h: 128 }
+      pile0:     { texture: "chars", x: 145, y: 883, w: 128, h: 128 }
+      pile1:     { texture: "chars", x: 277, y: 883, w: 128, h: 128 }
+      pile2:     { texture: "chars", x: 409, y: 883, w: 128, h: 128 }
+      pile3:     { texture: "chars", x: 541, y: 883, w: 128, h: 128 }
 
       # menu backgrounds
       mainmenu:  { texture: "mainmenu",  x: 0, y: 0, w: 1280, h: 720 }
