@@ -89,25 +89,25 @@ class Game
         return "Resume Game"
       (click) =>
         if click
-          @newGame()
-          @paused = false
-        return "New Game"
+          @renderMode = 1
+        return "How To Play"
       (click) =>
         if click
           @renderMode = 2
         return "Achievements"
       (click) =>
         if click
-          @renderMode = 1
-        return "How To Play"
+          @options.sortIndex = (@options.sortIndex + 1) % @optionMenus.sorts.length
+        return @optionMenus.sorts[@options.sortIndex].text
       (click) =>
         if click
           @options.speedIndex = (@options.speedIndex + 1) % @optionMenus.speeds.length
         return @optionMenus.speeds[@options.speedIndex].text
       (click) =>
         if click
-          @options.sortIndex = (@options.sortIndex + 1) % @optionMenus.sorts.length
-        return @optionMenus.sorts[@options.sortIndex].text
+          @newGame()
+          @paused = false
+        return "New Game"
     ]
 
     @newGame()
