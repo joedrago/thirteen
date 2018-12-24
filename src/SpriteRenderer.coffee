@@ -26,6 +26,10 @@ class SpriteRenderer
       # howto
       howto1:    { texture: "howto1",  x: 0, y:  0, w: 1920, h: 1080 }
 
+      au:        { texture: "chars", x: 540, y: 1079, w: 400, h:  80 }
+      star_on:   { texture: "chars", x:  38, y: 1066, w: 190, h: 190 }
+      star_off:  { texture: "chars", x: 250, y: 1066, w: 190, h: 190 }
+
       # characters
       mario:     { texture: "chars", x:  20, y:   0, w: 151, h: 308 }
       luigi:     { texture: "chars", x: 171, y:   0, w: 151, h: 308 }

@@ -107,6 +107,21 @@ class ShuffledDeck
       @cards[j] = i
 
 # ---------------------------------------------------------------------------------------------------------------------------
+# Achievements
+
+achievementsList = [
+  {
+    id: "trips"
+    title: "Trip Trappin'"
+    description: ["Throw trips twice in a single round."]
+  }
+]
+
+achievementsMap = {}
+for e in achievementsList
+  achievementsMap[e.id] = e
+
+# ---------------------------------------------------------------------------------------------------------------------------
 # Thirteen
 
 class Thirteen
@@ -131,6 +146,12 @@ class Thirteen
         @addAI()
 
       @deal()
+
+    @ach ?= {}
+    @ach.earned ?= {}
+    @ach.state ?= {}
+
+    @fanfares = []
 
   deal: (params) ->
     deck = new ShuffledDeck()
@@ -166,7 +187,7 @@ class Thirteen
   # Thirteen methods
 
   save: ->
-    names = "log players turn pile pileWho throwID currentPlay streak lastStreak".split(" ")
+    names = "log players turn pile pileWho throwID currentPlay streak lastStreak ach".split(" ")
     state = {}
     for name in names
       state[name] = this[name]
@@ -485,6 +506,18 @@ class Thirteen
 
   aiPass: (currentPlayer) ->
     return @pass({'id':currentPlayer.id})
+
+  earn: (id) ->
+    if @ach.earned[id]
+      return
+    achievement = achievementsMap[id]
+    if not achievement?
+      return
+
+    @ach.earned[id] = true
+    @output("Earned: #{achievement.title}")
+    @fanfares.push achievement.title
+
 
   # ---------------------------------------------------------------------------------------------------------------------------
   # AI
@@ -837,3 +870,5 @@ module.exports =
   Thirteen: Thirteen
   OK: OK
   aiCharacters: aiCharacters
+  achievementsList: achievementsList
+  achievementsMap: achievementsMap

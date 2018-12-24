@@ -5,7 +5,7 @@ SpriteRenderer = require './SpriteRenderer'
 Menu = require './Menu'
 Hand = require './Hand'
 Pile = require './Pile'
-{Thirteen, OK, aiCharacters} = require './Thirteen'
+{Thirteen, OK, aiCharacters, achievementsList} = require './Thirteen'
 
 # temp
 BUILD_TIMESTAMP = "0.0.1"
@@ -48,6 +48,10 @@ class Game
       play_again: { r:   0, g:   0, b:   0, a: 0.6 }
       red:        { r:   1, g:   0, b:   0, a:   1 }
       white:      { r:   1, g:   1, b:   1, a:   1 }
+      ach_bg:     { r: 0.1, g: 0.1, b: 0.1, a:   1 }
+      ach_header: { r:   1, g: 0.5, b:   0, a:   1 }
+      ach_title:  { r:   1, g:   1, b:   1, a:   1 }
+      ach_desc:   { r: 0.7, g: 0.7, b: 0.7, a:   1 }
 
     @textures =
       "cards": 0
@@ -58,8 +62,9 @@ class Game
     @thirteen = null
     @lastErr = ''
     @paused = false
-    @howto = 0
+    @renderMode = 0 # 0 = game, 1 = howto, 2 = achievements. yes, I'm being lazy.
     @renderCommands = []
+    @achievementFanfare = null
 
     @optionMenus =
       speeds: [
@@ -77,25 +82,6 @@ class Game
       sortIndex: 0
       sound: true
 
-    @mainMenu = new Menu this, "Thirteen", "solid", @colors.mainmenu, [
-      (click) =>
-        if click
-          @howto = 1
-        return "How To Play"
-      (click) =>
-        if click
-          @options.speedIndex = (@options.speedIndex + 1) % @optionMenus.speeds.length
-        return @optionMenus.speeds[@options.speedIndex].text
-      (click) =>
-        if click
-          @options.sortIndex = (@options.sortIndex + 1) % @optionMenus.sorts.length
-        return @optionMenus.sorts[@options.sortIndex].text
-      (click) =>
-        if click
-          @newGame()
-        return "Start"
-    ]
-
     @pauseMenu = new Menu this, "Paused", "solid", @colors.pausemenu, [
       (click) =>
         if click
@@ -108,7 +94,11 @@ class Game
         return "New Game"
       (click) =>
         if click
-          @howto = 1
+          @renderMode = 2
+        return "Achievements"
+      (click) =>
+        if click
+          @renderMode = 1
         return "How To Play"
       (click) =>
         if click
@@ -155,7 +145,6 @@ class Game
       options: @options
     }
 
-    # TODO: ENABLE SAVING HERE
     if @thirteen?
       @thirteen.updatePlayerHand(@hand.cards)
       state.thirteen = @thirteen.save()
@@ -291,17 +280,9 @@ class Game
     @zones.length = 0 # forget about zones from the last frame. we're about to make some new ones!
 
     updated = false
-    if @updateMainMenu(dt)
-      updated = true
     if @updateGame(dt)
       updated = true
 
-    return updated
-
-  updateMainMenu: (dt) ->
-    updated = false
-    if @mainMenu.update(dt)
-      updated = true
     return updated
 
   updateGame: (dt) ->
@@ -325,42 +306,74 @@ class Game
     if @pauseMenu.update(dt)
       updated = true
 
+    if @achievementFanfare != null
+      @achievementFanfare.time += dt
+      if @achievementFanfare.time > 5000
+        @achievementFanfare = null
+      updated = true
+
+    if @achievementFanfare == null
+      if @thirteen.fanfares.length > 0
+        @achievementFanfare =
+          title: @thirteen.fanfares.pop()
+          time: 0
+
     return updated
 
   render: ->
     # Reset render commands
     @renderCommands.length = 0
 
-    if @howto > 0
+    if @renderMode == 1
       @renderHowto()
-    else if @thirteen == null
-      @renderMainMenu()
+    else if @renderMode == 2
+      @renderAchievements()
     else
       @renderGame()
 
     return @renderCommands
 
   renderHowto: ->
-    howtoTexture = "howto#{@howto}"
+    howtoTexture = "howto1"
     @log "rendering #{howtoTexture}"
     @spriteRenderer.render "solid", 0, 0, @width, @height, 0, 0, 0, @colors.black
     @spriteRenderer.render howtoTexture, 0, 0, @width, @aaHeight, 0, 0, 0, @colors.white, =>
-      @howto = 0
-    # arrowWidth = @width / 20
-    # arrowOffset = arrowWidth * 4
-    # color = if @howto == 1 then @colors.arrowclose else @colors.arrow
-    # @spriteRenderer.render "arrowL", @center.x - arrowOffset, @height, arrowWidth, 0, 0, 0.5, 1, color, =>
-    #   @howto--
-    #   if @howto < 0
-    #     @howto = 0
-    # color = if @howto == 3 then @colors.arrowclose else @colors.arrow
-    # @spriteRenderer.render "arrowR", @center.x + arrowOffset, @height, arrowWidth, 0, 0, 0.5, 1, color, =>
-    #   @howto++
-    #   if @howto > 3
-    #     @howto = 0
+      @renderMode = 0
 
-  renderMainMenu: ->
-    @mainMenu.render()
+  debug: ->
+    console.log "debug"
+    # @thirteen.ach.earned = {}
+    # @thirteen.earn "trips"
+
+  renderAchievements: ->
+    @spriteRenderer.render "solid", 0, 0, @width, @height, 0, 0, 0, @colors.ach_bg, =>
+      @renderMode = 0
+
+    titleHeight = @height / 20
+    titleOffset = titleHeight / 2
+    @fontRenderer.render @font, titleHeight, "Achievements", @center.x, titleOffset, 0.5, 0.5, @colors.ach_header
+
+    imageMargin = @width / 15
+    topHeight = titleHeight
+    x = @width / 120
+    y = topHeight
+    titleHeight = @height / 22
+    descHeight = @height / 30
+    imageDim = titleHeight * 2
+    for ach, achIndex in achievementsList
+      icon = "star_off"
+      if @thirteen.ach.earned[ach.id]
+        icon = "star_on"
+      @spriteRenderer.render icon, x, y, imageDim, imageDim, 0, 0, 0, @colors.white
+      @fontRenderer.render @font, titleHeight, ach.title, x + imageMargin, y, 0, 0, @colors.ach_title
+      @fontRenderer.render @font, descHeight, ach.description[0], x + imageMargin, y + titleHeight, 0, 0, @colors.ach_desc
+      if ach.description.length > 1
+        @fontRenderer.render @font, descHeight, ach.description[1], x + imageMargin, y + titleHeight + descHeight, 0, 0, @colors.ach_desc
+      if achIndex == 6
+        y = topHeight
+        x += @width / 2
+      else
+        y += titleHeight * 3
 
   renderGame: ->
 
@@ -389,22 +402,22 @@ class Game
     if aiPlayers[0] != null
       character = aiCharacters[aiPlayers[0].charID]
       characterWidth = @spriteRenderer.calcWidth(character.sprite, characterHeight)
-      @spriteRenderer.render character.sprite, characterMargin, @charCeiling, 0, characterHeight, 0, 0, 1, @colors.white
+      @spriteRenderer.render character.sprite, characterMargin, @charCeiling, 0, characterHeight, 0, 0, 1, @colors.white, =>
+        @debug()
       @renderCount aiPlayers[0], aiPlayers[0].index == @thirteen.turn, countHeight, characterMargin + (characterWidth / 2), @charCeiling - textPadding, 0.5, 0
-      @renderAIHand aiPlayers[0].count, characterMargin + (characterWidth / 2), @charCeiling - textPadding, 0.5, 0
+
     # top side
     if aiPlayers[1] != null
       character = aiCharacters[aiPlayers[1].charID]
       @spriteRenderer.render character.sprite, @center.x, 0, 0, characterHeight, 0, 0.5, 0, @colors.white
       @renderCount aiPlayers[1], aiPlayers[1].index == @thirteen.turn, countHeight, @center.x, characterHeight, 0.5, 0
-      @renderAIHand aiPlayers[0].count, characterMargin + (characterWidth / 2), @charCeiling - textPadding, 0.5, 0
+
     # right side
     if aiPlayers[2] != null
       character = aiCharacters[aiPlayers[2].charID]
       characterWidth = @spriteRenderer.calcWidth(character.sprite, characterHeight)
       @spriteRenderer.render character.sprite, @width - characterMargin, @charCeiling, 0, characterHeight, 0, 1, 1, @colors.white
       @renderCount aiPlayers[2], aiPlayers[2].index == @thirteen.turn, countHeight, @width - (characterMargin + (characterWidth / 2)), @charCeiling - textPadding, 0.5, 0
-      @renderAIHand aiPlayers[0].count, characterMargin + (characterWidth / 2), @charCeiling - textPadding, 0.5, 0
 
     # card area
     handAreaHeight = 0.27 * @height
@@ -466,6 +479,22 @@ class Game
     if cardAreaText != null
       @fontRenderer.render @font, textHeight, cardAreaText, 0.02 * @width, @height - handAreaHeight, 0, 0, @colors.white
 
+    if @achievementFanfare != null
+      if @achievementFanfare.time < 1000
+        opacity = @achievementFanfare.time / 1000
+      else if @achievementFanfare.time > 4000
+        opacity = 1 - ((@achievementFanfare.time - 4000) / 1000)
+      else
+        opacity = 1
+      color = {r:1, g:1, b:1, a:opacity}
+      x = @width * 0.6
+      y = 0
+      xText = x + (@width * 0.06)
+      @spriteRenderer.render "au", x, y, 0, @height / 10, 0, 0, 0, color, =>
+        @achievementFanfare = null
+      @fontRenderer.render @font, textHeight, "Achievement Earned", xText, y, 0, 0, color
+      @fontRenderer.render @font, textHeight, @achievementFanfare.title, xText, y + textHeight, 0, 0, color
+
     if @paused
       @pauseMenu.render()
 
@@ -503,9 +532,6 @@ class Game
     @fontRenderer.render @font, countHeight, nameString, x, nameY, anchorx, anchory, @colors.white
     if player.id != 1
       @fontRenderer.render @font, countHeight, countString, x, countY, anchorx, anchory, @colors.white
-
-  renderAIHand: (cardCount, countHeight, x, y, anchorx, anchory) ->
-    # TODO: make this draw a tiny hand of cards on the AI chars
 
   # -----------------------------------------------------------------------------------------------------
   # rendering and zones
