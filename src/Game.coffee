@@ -8,7 +8,7 @@ Pile = require './Pile'
 {Thirteen, OK, aiCharacters, achievementsList} = require './Thirteen'
 
 # temp
-BUILD_TIMESTAMP = "1.0.2"
+BUILD_TIMESTAMP = "1.0.3"
 
 class Game
   constructor: (@native, @width, @height) ->
@@ -273,7 +273,7 @@ class Game
     if not @hand.picking
       return
     cards = @hand.selectedCards()
-    @hand.selectNone()
+    # @hand.selectNone()
     if cards.length == 0
       return @pass()
     # @hand.togglePicking()

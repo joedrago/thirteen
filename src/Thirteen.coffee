@@ -538,6 +538,44 @@ class Thirteen
         highestPlace = player.place
     return highestPlace + 1
 
+  splitPlayType: (playType) ->
+    if matches = playType.match(/^([^0-9]+)(\d+)/)
+      return [matches[1], parseInt(matches[2])]
+    return [playType, 1]
+
+  hasPlay: (currentPlay, hand) ->
+    # quick check. if you dont have enough cards, you can't have a play
+    if (playToCardCount(currentPlay) > hand.length)
+      return false
+
+    plays = {}
+    spl = @splitPlayType(currentPlay.type)
+    switch spl[0]
+      when 'rop'
+        @aiCalcRops(hand, plays, spl[1])
+      when 'run'
+        @aiCalcRuns(hand, plays, false, spl[1])
+      when 'kind'
+        @alCalcKinds(hand, plays, true)
+
+    if plays[currentPlay.type]? and plays[currentPlay.type].length > 0
+        for play in plays[currentPlay.type]
+          if @highestCard(play) > currentPlay.high
+            return true
+
+    # special case kinds
+    if spl[0] == 'kind'
+      # check bigger kinds
+      for biggerKind in [spl[1]..4]
+        biggerType = "kind#{biggerKind}"
+        if plays[biggerType]? and plays[biggerType].length > 0
+            for play in plays[biggerType]
+              if @highestCard(play) > currentPlay.high
+                return true
+
+    # no plays, pass
+    return false
+
   canPass: (params) ->
     if @gameOver()
       return 'gameOver'
@@ -748,8 +786,8 @@ class Thirteen
       return ret
 
     currentPlayer = @currentPlayer()
-    if @currentPlay and (playToCardCount(@currentPlay) > currentPlayer.hand.length)
-      @output("#{currentPlayer.name} auto-passes (too few cards)")
+    if not currentPlayer.ai and @currentPlay and not @hasPlay(@currentPlay, currentPlayer.hand)
+      @output("#{currentPlayer.name} auto-passes (no plays)")
     else if currentPlayer.pass
       @output("#{currentPlayer.name} auto-passes")
     else
@@ -803,8 +841,8 @@ class Thirteen
     if not currentPlayer.ai
       if @currentPlay and (@currentPlay.type == 'kind1') and @hasBreaker(currentPlayer.hand)
         # do nothing, player can drop a breaker
-      else if @currentPlay and (playToCardCount(@currentPlay) > currentPlayer.hand.length)
-        @aiLog("autopassing for player, not enough cards")
+      else if @currentPlay and not @hasPlay(@currentPlay, currentPlayer.hand)
+        @aiLog("autopassing for player, no plays")
         @aiPass(currentPlayer)
         return true
       else if currentPlayer.pass
@@ -872,15 +910,20 @@ class Thirteen
 
     return [runs, leftovers]
 
-  aiCalcRuns: (hand, plays, smallRuns) ->
-    if smallRuns
-      startSize = 3
-      endSize = 12
-      byAmount = 1
+  aiCalcRuns: (hand, plays, smallRuns, singleSize = null) ->
+    if singleSize != null
+        startSize = singleSize
+        endSize = singleSize
+        byAmount = 1
     else
-      startSize = 12
-      endSize = 3
-      byAmount = -1
+      if smallRuns
+        startSize = 3
+        endSize = 12
+        byAmount = 1
+      else
+        startSize = 12
+        endSize = 3
+        byAmount = -1
     for runSize in [startSize..endSize] by byAmount
       [runs, leftovers] = @aiFindRuns(hand, 1, runSize)
       if runs.length > 0
@@ -890,9 +933,13 @@ class Thirteen
 
     return hand
 
-  aiCalcRops: (hand, plays) ->
-    startSize = 3
-    endSize = 6
+  aiCalcRops: (hand, plays, singleSize = null) ->
+    if singleSize == null
+      startSize = 3
+      endSize = 6
+    else
+      startSize = singleSize
+      endSize = singleSize
     for runSize in [startSize..endSize]
       [rops, leftovers] = @aiFindRuns(hand, 2, runSize)
       if rops.length > 0
