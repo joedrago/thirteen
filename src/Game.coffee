@@ -8,7 +8,7 @@ Pile = require './Pile'
 {Thirteen, OK, aiCharacters, achievementsList} = require './Thirteen'
 
 # temp
-BUILD_TIMESTAMP = "0.0.1"
+BUILD_TIMESTAMP = "1.0.0"
 
 class Game
   constructor: (@native, @width, @height) ->
@@ -89,12 +89,12 @@ class Game
         return "Resume Game"
       (click) =>
         if click
-          @renderMode = 1
-        return "How To Play"
-      (click) =>
-        if click
           @renderMode = 2
         return "Achievements"
+      (click) =>
+        if click
+          @renderMode = 1
+        return "How To Play"
       (click) =>
         if click
           @options.sortIndex = (@options.sortIndex + 1) % @optionMenus.sorts.length
@@ -105,7 +105,12 @@ class Game
         return @optionMenus.speeds[@options.speedIndex].text
       (click) =>
         if click
-          @newGame()
+          @newGame(true)
+          @paused = false
+        return "New Money Game"
+      (click) =>
+        if click
+          @newGame(false)
           @paused = false
         return "New Game"
     ]
@@ -158,8 +163,8 @@ class Game
   aiTickRate: ->
     return @optionMenus.speeds[@options.speedIndex].speed
 
-  newGame: ->
-    @thirteen.newGame()
+  newGame: (money) ->
+    @thirteen.newGame(money)
     @prepareGame()
 
   prepareGame: ->
@@ -405,6 +410,8 @@ class Game
     characterHeight = @aaHeight / 5
     countHeight = textHeight
 
+    drawGameOver = @thirteen.gameOver() and @pile.resting()
+
     # Log
     for line, i in @thirteen.log
       @fontRenderer.render @font, textHeight, line, 0, (i+1.5) * (textHeight + textPadding), 0, 0, @colors.logcolor
@@ -424,27 +431,27 @@ class Game
       characterWidth = @spriteRenderer.calcWidth(character.sprite, characterHeight)
       @spriteRenderer.render character.sprite, characterMargin, @charCeiling, 0, characterHeight, 0, 0, 1, @colors.white, =>
         # @debug()
-      @renderCount aiPlayers[0], aiPlayers[0].index == @thirteen.turn, countHeight, characterMargin + (characterWidth / 2), @charCeiling - textPadding, 0.5, 0
+      @renderCount aiPlayers[0], @thirteen.money, drawGameOver, aiPlayers[0].index == @thirteen.turn, countHeight, characterMargin + (characterWidth / 2), @charCeiling - textPadding, 0.5, 0
 
     # top side
     if aiPlayers[1] != null
       character = aiCharacters[aiPlayers[1].charID]
       @spriteRenderer.render character.sprite, @center.x, 0, 0, characterHeight, 0, 0.5, 0, @colors.white
-      @renderCount aiPlayers[1], aiPlayers[1].index == @thirteen.turn, countHeight, @center.x, characterHeight, 0.5, 0
+      @renderCount aiPlayers[1], @thirteen.money, drawGameOver, aiPlayers[1].index == @thirteen.turn, countHeight, @center.x, characterHeight, 0.5, 0
 
     # right side
     if aiPlayers[2] != null
       character = aiCharacters[aiPlayers[2].charID]
       characterWidth = @spriteRenderer.calcWidth(character.sprite, characterHeight)
       @spriteRenderer.render character.sprite, @width - characterMargin, @charCeiling, 0, characterHeight, 0, 1, 1, @colors.white
-      @renderCount aiPlayers[2], aiPlayers[2].index == @thirteen.turn, countHeight, @width - (characterMargin + (characterWidth / 2)), @charCeiling - textPadding, 0.5, 0
+      @renderCount aiPlayers[2], @thirteen.money, drawGameOver, aiPlayers[2].index == @thirteen.turn, countHeight, @width - (characterMargin + (characterWidth / 2)), @charCeiling - textPadding, 0.5, 0
 
     # card area
     handAreaHeight = 0.27 * @height
     cardAreaText = null
     if @hand.picking
       handareaColor = @colors.hand_pick
-      if (@thirteen.turn == 0) and (@thirteen.everyonePassed() or (@thirteen.pile.length == 0))
+      if (@thirteen.turn == 0) and (@thirteen.everyonePassed() or (@thirteen.currentPlay == null))
         handareaColor = @colors.hand_any
         if @thirteen.pile.length == 0
           cardAreaText = 'Anything (3\xc8)'
@@ -466,9 +473,8 @@ class Game
     @pile.render()
 
     @hand.render()
-    @renderCount @thirteen.players[0], 0 == @thirteen.turn, countHeight, @center.x, @height, 0.5, 1
 
-    if @thirteen.winner() and @pile.resting()
+    if drawGameOver
       # @spriteRenderer.render "solid", 0, 0, @width, @height - handAreaHeight, 0, 0, 0, @colors.play_again
 
       lines = @gameOverText()
@@ -489,6 +495,8 @@ class Game
       shadowDistance = restartQuitSize / 8
       @fontRenderer.render @font, restartQuitSize, "Play Again", shadowDistance + @center.x, shadowDistance + (@height - (handAreaHeight * 0.5)), 0.5, 1, @colors.black
       @fontRenderer.render @font, restartQuitSize, "Play Again", @center.x, @height - (handAreaHeight * 0.5), 0.5, 1, @colors.gold
+
+    @renderCount @thirteen.players[0], @thirteen.money, drawGameOver, 0 == @thirteen.turn, countHeight, @center.x, @height, 0.5, 1
 
     # Headline (includes error)
     @fontRenderer.render @font, textHeight, @calcHeadline(), 0, 0, 0, 0, @colors.lightgray
@@ -521,18 +529,34 @@ class Game
 
     return
 
-  renderCount: (player, myTurn, countHeight, x, y, anchorx, anchory) ->
+  renderCount: (player, money, drawGameOver, myTurn, countHeight, x, y, anchorx, anchory) ->
     if myTurn
       nameColor = "`ff7700`"
     else
       nameColor = ""
-    nameString = " #{nameColor}#{player.name}`` "
+    nameString = " #{nameColor}#{player.name}``"
+    if money
+      player.money ?= 0
+      nameString += ": $ `aaffaa`#{player.money}"
+    nameString += " "
     cardCount = player.hand.length
-    if cardCount > 1
-      trickColor = "ffff33"
+    if drawGameOver or (cardCount == 0)
+      if money
+        placeString = "4th"
+        if player.place == 1
+          placeString = "1st"
+        else if player.place == 2
+          placeString = "2nd"
+        else if player.place == 3
+          placeString = "3rd"
+        countString = " `ffaaff`#{placeString}`` Place "
+      else
+        if player.place == 1
+          countString = " `ffffaa`Winner`` "
+        else
+          countString = " `ffaaff`Loser`` "
     else
-      trickColor = "ff3333"
-    countString = " `#{trickColor}`#{cardCount}`` left "
+      countString = " `ffff33`#{cardCount}`` left "
 
     nameSize = @fontRenderer.size(@font, countHeight, nameString)
     countSize = @fontRenderer.size(@font, countHeight, countString)
@@ -543,7 +567,7 @@ class Game
     nameY = y
     countY = y
     boxHeight = countSize.h
-    if player.id != 1
+    if true # player.id != 1
       boxHeight *= 2
       if anchory > 0
         nameY -= countHeight
@@ -551,7 +575,7 @@ class Game
         countY += countHeight
     @spriteRenderer.render "solid", x, y, countSize.w, boxHeight, 0, anchorx, anchory, @colors.overlay
     @fontRenderer.render @font, countHeight, nameString, x, nameY, anchorx, anchory, @colors.white
-    if player.id != 1
+    if true # player.id != 1
       @fontRenderer.render @font, countHeight, countString, x, countY, anchorx, anchory, @colors.white
 
   # -----------------------------------------------------------------------------------------------------

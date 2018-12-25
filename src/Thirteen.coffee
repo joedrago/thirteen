@@ -13,6 +13,8 @@ SuitName = ['Spades', 'Clubs', 'Diamonds', 'Hearts']
 ShortSuitName = ['S', 'C', 'D', 'H']
 GlyphSuitName = ["\xc8", "\xc9", "\xca", "\xcb"]
 
+STARTING_MONEY = 25
+
 # ---------------------------------------------------------------------------------------------------------------------------
 # AI Name Generator
 
@@ -212,7 +214,7 @@ class Thirteen
           this[k] = params.state[k]
       @initAchievements()
     else
-      @newGame()
+      @newGame(params.money)
 
   initAchievements: ->
     @ach ?= {}
@@ -226,6 +228,7 @@ class Thirteen
     for player, playerIndex in @players
       @game.log "dealing 13 cards to player #{playerIndex}"
 
+      player.place = 0
       player.hand = []
       for j in [0...13]
         raw = deck.cards.shift()
@@ -258,21 +261,28 @@ class Thirteen
     @currentPlay = null
     @unpassAll()
 
-    @output('Hand dealt, ' + @players[@turn].name + ' plays first')
+    forMoney = ""
+    if @money
+      forMoney = " (for money)"
+    @output("Hand dealt#{forMoney}, " + @players[@turn].name + " plays first")
 
     return OK
 
   # ---------------------------------------------------------------------------------------------------------------------------
   # Thirteen methods
 
-  newGame: ->
+  newGame: (money = false) ->
     # new game
     @log = []
     @streak = 0
     @lastStreak = 0
+    @money = false
+    if money
+      @money = true
+    console.log "for money: #{@money}"
 
     @players = [
-      { id: 1, name: 'Player', index: 0, pass: false }
+      { id: 1, name: 'Player', index: 0, pass: false, money: STARTING_MONEY }
     ]
 
     for i in [1...4]
@@ -281,7 +291,7 @@ class Thirteen
     @deal()
 
   save: ->
-    names = "log players turn pile pileWho throwID currentPlay streak lastStreak ach".split(" ")
+    names = "log players turn pile pileWho throwID currentPlay streak lastStreak ach money".split(" ")
     state = {}
     for name in names
       state[name] = this[name]
@@ -293,7 +303,7 @@ class Thirteen
       @log.shift()
 
   headline: ->
-    if @winner() != null
+    if @gameOver()
       return "Game Over"
 
     if @pile.length == 0
@@ -323,8 +333,47 @@ class Thirteen
   currentPlayer: ->
     return @players[@turn]
 
+  findPlace: (place) ->
+    for player in @players
+      if (place == 4) and (player.place == 0)
+        return player
+      if player.place == place
+        return player
+    return undefined
+
+  payout: ->
+    place1 = @findPlace(1)
+    place2 = @findPlace(2)
+    place3 = @findPlace(3)
+    place4 = @findPlace(4)
+
+    if not place1 or not place2 or not place3 or not place4
+      @output "error with payouts!"
+      return
+
+    @output "#{place4.name} pays $2 to #{place1.name}"
+    @output "#{place3.name} pays $1 to #{place2.name}"
+
+    place1.money += 2
+    place2.money += 1
+    place3.money += -1
+    place4.money += -2
+    return
+
+  # all INCLUDING the current player
+  entireTablePassed: ->
+    for player, playerIndex in @players
+      if player.place != 0
+        continue
+      if not player.pass
+        return false
+    return true
+
+  # all but the current player
   everyonePassed: ->
     for player, playerIndex in @players
+      if (player.place != 0) and (@pileWho != playerIndex)
+        continue
       if playerIndex == @turn
         continue
       if not player.pass
@@ -332,7 +381,11 @@ class Thirteen
     return true
 
   playerAfter: (index) ->
-    return (index + 1) % @players.length
+    loop
+      index = (index + 1) % @players.length
+      if @players[index].place == 0
+        return index
+    return 0 # impossible?
 
   addPlayer: (player) ->
     if not player.ai
@@ -361,6 +414,7 @@ class Thirteen
       id: 'ai' + String(@players.length)
       pass: false
       ai: true
+      money: STARTING_MONEY
 
     @addPlayer(ai)
 
@@ -373,9 +427,15 @@ class Thirteen
 
   winner: ->
     for player, i in @players
-      if player.hand.length == 0
+      if player.place == 1
         return player
     return null
+
+  gameOver: ->
+    np = @nextPlace()
+    if @money
+      return (np > 3)
+    return (np > 1)
 
   hasCard: (hand, rawCard) ->
     for raw in hand
@@ -470,8 +530,16 @@ class Thirteen
         return true
     return false
 
+  nextPlace: ->
+    highestPlace = 0
+    for player in @players
+      player.place ?= 0
+      if highestPlace < player.place
+        highestPlace = player.place
+    return highestPlace + 1
+
   canPass: (params) ->
-    if @winner() != null
+    if @gameOver()
       return 'gameOver'
 
     currentPlayer = @currentPlayer()
@@ -487,7 +555,7 @@ class Thirteen
     return OK
 
   canPlay: (params, incomingPlay, handHas3S) ->
-    if @winner() != null
+    if @gameOver()
       return 'gameOver'
 
     currentPlayer = @currentPlayer()
@@ -609,13 +677,29 @@ class Thirteen
     if currentPlayer.hand.length == 0
       # Game over! do gameover things.
 
-      @output("#{currentPlayer.name} wins!")
-      if currentPlayer.ai
-        @lastStreak = @streak
-        @streak = 0
+      currentPlayer.place = @nextPlace()
+
+      if @money
+        placeString = "4th"
+        if currentPlayer.place == 1
+          placeString = "1st"
+        else if currentPlayer.place == 2
+          placeString = "2nd"
+        else if currentPlayer.place == 3
+          placeString = "3rd"
+        @output("#{currentPlayer.name} takes #{placeString} place")
+
+        if currentPlayer.place == 3
+          @payout()
       else
+        @output("#{currentPlayer.name} wins!")
+
+      if (@turn == 0) and (currentPlayer.place == 1)
         @streak += 1
         @lastStreak = @streak
+      else
+        @lastStreak = @streak
+        @streak = 0
 
       @ach.state.bestStreak ?= 0
       if @ach.state.bestStreak < @lastStreak
@@ -627,7 +711,7 @@ class Thirteen
       @ach.state.totalGames += 1
       if @ach.state.totalGames >= 50
         @earn "veteran"
-      if @turn == 0
+      if (@turn == 0) and (currentPlayer.place == 1)
         # player won
         if (@players[1].hand.length >= 10) and (@players[2].hand.length >= 10) and (@players[3].hand.length >= 10)
           @earn "rekt"
@@ -704,8 +788,14 @@ class Thirteen
 
   # Detects if the current player is AI during a BID or TRICK phase and acts according to their 'brain'
   aiTick: ->
-    if @winner() != null
+    if @gameOver()
       return false
+
+    if @entireTablePassed()
+      @turn = @playerAfter(@pileWho)
+      @unpassAll()
+      @currentPlay = null
+      @output('Whole table passes, control to ' + @players[@turn].name)
 
     currentPlayer = @currentPlayer()
     if not currentPlayer.ai
