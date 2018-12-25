@@ -712,16 +712,17 @@ class Thirteen
       @ach.state.totalGames += 1
       if @ach.state.totalGames >= 50
         @earn "veteran"
-      if (@turn == 0) and (currentPlayer.place == 1)
-        # player won
-        if (@players[1].hand.length >= 10) and (@players[2].hand.length >= 10) and (@players[3].hand.length >= 10)
-          @earn "rekt"
-        if @ach.state.fashionablyLate
-          @earn "late"
-      else
-        # player lost
-        if @ach.state.threwRun7
-          @earn "tony"
+      if currentPlayer.place == 1
+        if @turn == 0
+          # player won
+          if (@players[1].hand.length >= 10) and (@players[2].hand.length >= 10) and (@players[3].hand.length >= 10)
+            @earn "rekt"
+          if @ach.state.fashionablyLate
+            @earn "late"
+        else
+          # player lost
+          if @ach.state.threwRun7
+            @earn "tony"
 
     achievementCount = 0
     for achievement in achievementsList
