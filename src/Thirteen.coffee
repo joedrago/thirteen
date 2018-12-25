@@ -324,6 +324,15 @@ class Thirteen
       headline += " (or throw anything)"
     return headline
 
+  canThrowAnything: ->
+    if @pile.length == 0
+      return true
+    if not @currentPlay
+      return true
+    if @everyonePassed()
+      return true
+    return false
+
   findPlayer: (id) ->
     for player in @players
       if player.id == id
@@ -548,15 +557,20 @@ class Thirteen
     if (playToCardCount(currentPlay) > hand.length)
       return false
 
+    leftovers = []
     plays = {}
     spl = @splitPlayType(currentPlay.type)
     switch spl[0]
       when 'rop'
-        @aiCalcRops(hand, plays, spl[1])
+        leftovers = @aiCalcRops(hand, plays, spl[1])
       when 'run'
-        @aiCalcRuns(hand, plays, false, spl[1])
+        leftovers = @aiCalcRuns(hand, plays, false, spl[1])
       when 'kind'
-        @alCalcKinds(hand, plays, true)
+        leftovers = @alCalcKinds(hand, plays, true)
+
+    plays.kind1 ?= []
+    for leftover in leftovers
+      plays.kind1.push [leftover]
 
     if plays[currentPlay.type]? and plays[currentPlay.type].length > 0
         for play in plays[currentPlay.type]
@@ -839,16 +853,17 @@ class Thirteen
 
     currentPlayer = @currentPlayer()
     if not currentPlayer.ai
-      if @currentPlay and (@currentPlay.type == 'kind1') and @hasBreaker(currentPlayer.hand)
-        # do nothing, player can drop a breaker
-      else if @currentPlay and not @hasPlay(@currentPlay, currentPlayer.hand)
-        @aiLog("autopassing for player, no plays")
-        @aiPass(currentPlayer)
-        return true
-      else if currentPlayer.pass
-        @aiLog("autopassing for player")
-        @aiPass(currentPlayer)
-        return true
+      if not @canThrowAnything()
+        if @currentPlay and (@currentPlay.type == 'kind1') and @hasBreaker(currentPlayer.hand)
+          # do nothing, player can drop a breaker
+        else if @currentPlay and not @hasPlay(@currentPlay, currentPlayer.hand)
+          @aiLog("autopassing for player, no plays")
+          @aiPass(currentPlayer)
+          return true
+        else if currentPlayer.pass
+          @aiLog("autopassing for player")
+          @aiPass(currentPlayer)
+          return true
       return false
 
     character = aiCharacters[currentPlayer.charID]
