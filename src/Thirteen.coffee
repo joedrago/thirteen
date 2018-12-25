@@ -111,9 +111,87 @@ class ShuffledDeck
 
 achievementsList = [
   {
-    id: "trips"
-    title: "Trip Trappin'"
-    description: ["Throw trips twice in a single round."]
+    id: "veteran"
+    title: "I've Seen Some Things"
+    description: ["Play 50 Hands."]
+    progress: (ach) ->
+      if ach.state.totalGames >= 50
+        return "Total Played: `aaffaa`#{ach.state.totalGames}`` Games"
+      return "Progress: #{ach.state.totalGames} / 50"
+  }
+  {
+    id: "tryhard"
+    title: "Tryhard"
+    description: ["Earn a 5 game win streak."]
+    progress: (ach) ->
+      bestStreak = ach.state.bestStreak
+      bestStreak ?= 0
+      if bestStreak >= 5
+        return "Best Streak: `aaffaa`#{bestStreak}`` Wins"
+      s = ""
+      if bestStreak > 1
+        s = "s"
+      return "Best Streak: #{bestStreak} Win#{s}"
+  }
+  {
+    id: "breaker"
+    title: "Spring Break"
+    description: ["Break a 2."]
+  }
+  {
+    id: "keepitlow"
+    title: "Keep It Low, Boys"
+    description: ["Play a Single 2 on top of a Single 3."]
+  }
+  {
+    id: "suited"
+    title: "Doesn't Even Matter"
+    description: ["Throw a suited run."]
+  }
+  {
+    id: "tony"
+    title: "The Tony"
+    description: ["Throw a run of 7 or more cards, and then lose."]
+  }
+  {
+    id: "sampler"
+    title: "Sampler Platter"
+    description: ["In a single hand: play at least one Single,", "one Pair, one Trips, and one Run."]
+  }
+  {
+    id: "tragedy"
+    title: "Tragedy"
+    description: ["Begin the game by throwing a two breaker involving", "the 3 of Spades."]
+  }
+  {
+    id: "indomitable"
+    title: "Indomitable"
+    description: ["Throw a run ending in the Ace of Hearts."]
+  }
+  {
+    id: "rekt"
+    title: "Get Rekt"
+    description: ["Win while all opponents still have 10 or more cards."]
+  }
+  {
+    id: "late"
+    title: "Fashionably Late"
+    description: ["Pass until all 4 2s are thrown, and then win."]
+  }
+  {
+    id: "pairs"
+    title: "Pairing Up"
+    description: ["Throw 5 pairs in a single round."]
+  }
+  {
+    id: "yourself"
+    title: "You Played Yourself"
+    description: ["Beat your own play."]
+  }
+  {
+    id: "thirteen"
+    title: "Thirteen"
+    description: ["Earn 13 achievements."]
   }
 ]
 
@@ -132,25 +210,15 @@ class Thirteen
       for k,v of params.state
         if params.state.hasOwnProperty(k)
           this[k] = params.state[k]
+      @initAchievements()
     else
-      # new game
-      @log = []
-      @streak = 0
-      @lastStreak = 0
+      @newGame()
 
-      @players = [
-        { id: 1, name: 'Player', index: 0, pass: false }
-      ]
-
-      for i in [1...4]
-        @addAI()
-
-      @deal()
-
+  initAchievements: ->
     @ach ?= {}
     @ach.earned ?= {}
     @ach.state ?= {}
-
+    @ach.state.totalGames ?= 0
     @fanfares = []
 
   deal: (params) ->
@@ -173,6 +241,17 @@ class Thirteen
         # Reverse
         player.hand.sort (a,b) -> return b - a
 
+    @initAchievements()
+    @ach.state.threwSingle = false
+    @ach.state.threwPair = false
+    @ach.state.threwTrips = false
+    @ach.state.threwRun = false
+    @ach.state.threwRun7 = false
+    @ach.state.twosSeen = 0
+    @ach.state.fashionablyLate = false
+    @ach.state.pairsThrown = 0
+    @ach.state.bestStreak ?= 0
+
     @pile = []
     @pileWho = -1
     @throwID = 0
@@ -185,6 +264,21 @@ class Thirteen
 
   # ---------------------------------------------------------------------------------------------------------------------------
   # Thirteen methods
+
+  newGame: ->
+    # new game
+    @log = []
+    @streak = 0
+    @lastStreak = 0
+
+    @players = [
+      { id: 1, name: 'Player', index: 0, pass: false }
+    ]
+
+    for i in [1...4]
+      @addAI()
+
+    @deal()
 
   save: ->
     names = "log players turn pile pileWho throwID currentPlay streak lastStreak ach".split(" ")
@@ -443,6 +537,9 @@ class Thirteen
     if ret != OK
       return ret
 
+    breakerThrown = false
+    newThrow = true
+
     # TODO: make pretty names based on the play, add play to headline
     verb = "throws:"
     if @currentPlay
@@ -450,12 +547,56 @@ class Thirteen
         # 2 breaker!
         @unpassAll()
         verb = "breaks 2:"
+        breakerThrown = true
+        newThrow = false
       else if (incomingPlay.type != @currentPlay.type) or (incomingPlay.high < @currentPlay.high)
         # New play!
         @unpassAll()
         verb = "throws new:"
+      else
+        newThrow = false
     else
       verb = "begins:"
+
+    # Achievements
+    @ach.state.twosSeen ?= 0
+    @ach.state.pairsThrown ?= 0
+    for card in params.cards
+      if card >= 48
+        @ach.state.twosSeen += 1
+    if (@ach.state.twosSeen == 4) and (@players[0].hand.length == 13)
+      @ach.state.fashionablyLate = true
+    console.log "@ach.state.fashionablyLate #{@ach.state.fashionablyLate}"
+    if @turn == 0
+      if @everyonePassed() and not newThrow
+        @earn "yourself"
+      if incomingPlay.type == 'kind2'
+        @ach.state.pairsThrown += 1
+        if @ach.state.pairsThrown >= 5
+          @earn "pairs"
+      if breakerThrown
+        @earn "breaker"
+      if @isBreakerType(incomingPlay.type) and (@pile.length == 0)
+        @earn "tragedy"
+      if @isRunType(incomingPlay.type) and @isSuited(params.cards)
+        @earn "suited"
+      if @currentPlay and (@currentPlay.type == 'kind1') and (@currentPlay.high <= 3) and (incomingPlay.type == 'kind1') and (incomingPlay.high >= 48)
+        @earn "keepitlow"
+      if @isRunType(incomingPlay.type) and (incomingPlay.high == 47) # Ace of Hearts
+        @earn "indomitable"
+      if @isBigRun(incomingPlay, 7)
+        console.log "threwRun7: true"
+        @ach.state.threwRun7 = true
+      if incomingPlay.type == 'kind1'
+        @ach.state.threwSingle = true
+      if incomingPlay.type == 'kind2'
+        @ach.state.threwPair = true
+      if incomingPlay.type == 'kind3'
+        @ach.state.threwTrips = true
+      if incomingPlay.type.match(/^run/)
+        @ach.state.threwRun = true
+      if @ach.state.threwSingle and @ach.state.threwPair and @ach.state.threwTrips and @ach.state.threwRun
+        @earn "sampler"
 
     @currentPlay = incomingPlay
 
@@ -466,6 +607,8 @@ class Thirteen
     @output("#{currentPlayer.name} #{verb} #{playToString(incomingPlay)}")
 
     if currentPlayer.hand.length == 0
+      # Game over! do gameover things.
+
       @output("#{currentPlayer.name} wins!")
       if currentPlayer.ai
         @lastStreak = @streak
@@ -473,6 +616,34 @@ class Thirteen
       else
         @streak += 1
         @lastStreak = @streak
+
+      @ach.state.bestStreak ?= 0
+      if @ach.state.bestStreak < @lastStreak
+        @ach.state.bestStreak = @lastStreak
+
+      # Achievements
+      if @ach.state.bestStreak >= 5
+        @earn "tryhard"
+      @ach.state.totalGames += 1
+      if @ach.state.totalGames >= 50
+        @earn "veteran"
+      if @turn == 0
+        # player won
+        if (@players[1].hand.length >= 10) and (@players[2].hand.length >= 10) and (@players[3].hand.length >= 10)
+          @earn "rekt"
+        if @ach.state.fashionablyLate
+          @earn "late"
+      else
+        # player lost
+        if @ach.state.threwRun7
+          @earn "tony"
+
+    achievementCount = 0
+    for achievement in achievementsList
+      if @ach.earned[achievement.id]
+        achievementCount += 1
+    if achievementCount >= 13
+      @earn "thirteen"
 
     @pile = params.cards.slice(0)
     @pileWho = @turn
@@ -687,6 +858,28 @@ class Thirteen
       if @isBreakerType(playType)
         if playlist.length > 0
           return true
+    return false
+
+  isRunType: (playType) ->
+    if playType.match(/^run/)
+      return true
+    return false
+
+  isSuited: (hand) ->
+    if hand.length < 1
+      return false
+    cards = hand.map (raw) -> new Card(raw)
+    suit = cards[0].suit
+    for card in cards
+      if card.suit != suit
+        return false
+    return true
+
+  isBigRun: (play, atLeast) ->
+    if matches = play.type.match(/^run(\d+)/)
+      len = parseInt(matches[1])
+      if len >= atLeast
+        return true
     return false
 
   aiCalcBestPlays: (hand) ->

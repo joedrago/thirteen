@@ -110,7 +110,9 @@ class Game
         return "New Game"
     ]
 
-    @newGame()
+    @thirteen = new Thirteen this, {}
+    @log "player 0's hand: " + JSON.stringify(@thirteen.players[0].hand)
+    @prepareGame()
 
   # -----------------------------------------------------------------------------------------------------
   # logging
@@ -157,8 +159,7 @@ class Game
     return @optionMenus.speeds[@options.speedIndex].speed
 
   newGame: ->
-    @thirteen = new Thirteen this, {}
-    @log "player 0's hand: " + JSON.stringify(@thirteen.players[0].hand)
+    @thirteen.newGame()
     @prepareGame()
 
   prepareGame: ->
@@ -315,7 +316,7 @@ class Game
     if @achievementFanfare == null
       if @thirteen.fanfares.length > 0
         @achievementFanfare =
-          title: @thirteen.fanfares.pop()
+          title: @thirteen.fanfares.shift()
           time: 0
 
     return updated
@@ -341,9 +342,24 @@ class Game
       @renderMode = 0
 
   debug: ->
-    console.log "debug"
+    console.log "debug ach"
+    console.log @thirteen.ach
     # @thirteen.ach.earned = {}
-    # @thirteen.earn "trips"
+    # @thirteen.ach.earned.veteran = true
+    # @thirteen.ach.earned.tryhard = true
+    # @thirteen.ach.earned.breaker = true
+    # @thirteen.ach.earned.keepitlow = true
+    # @thirteen.ach.earned.suited = true
+    # @thirteen.ach.earned.tony = true
+    # @thirteen.ach.earned.sampler = true
+    # @thirteen.ach.earned.tragedy = true
+    # @thirteen.ach.earned.indomitable = true
+    # @thirteen.ach.earned.rekt = true
+    # @thirteen.ach.earned.late = true
+    # @thirteen.ach.earned.pairs = true
+
+    # @thirteen.ach.state.totalGames = 0
+    # @thirteen.streak = 0
 
   renderAchievements: ->
     @spriteRenderer.render "solid", 0, 0, @width, @height, 0, 0, 0, @colors.ach_bg, =>
@@ -367,8 +383,12 @@ class Game
       @spriteRenderer.render icon, x, y, imageDim, imageDim, 0, 0, 0, @colors.white
       @fontRenderer.render @font, titleHeight, ach.title, x + imageMargin, y, 0, 0, @colors.ach_title
       @fontRenderer.render @font, descHeight, ach.description[0], x + imageMargin, y + titleHeight, 0, 0, @colors.ach_desc
-      if ach.description.length > 1
-        @fontRenderer.render @font, descHeight, ach.description[1], x + imageMargin, y + titleHeight + descHeight, 0, 0, @colors.ach_desc
+      if ach.progress?
+        progress = ach.progress(@thirteen.ach)
+        @fontRenderer.render @font, descHeight, progress, x + imageMargin, y + titleHeight + descHeight, 0, 0, @colors.ach_desc
+      else
+        if ach.description.length > 1
+          @fontRenderer.render @font, descHeight, ach.description[1], x + imageMargin, y + titleHeight + descHeight, 0, 0, @colors.ach_desc
       if achIndex == 6
         y = topHeight
         x += @width / 2
@@ -403,7 +423,7 @@ class Game
       character = aiCharacters[aiPlayers[0].charID]
       characterWidth = @spriteRenderer.calcWidth(character.sprite, characterHeight)
       @spriteRenderer.render character.sprite, characterMargin, @charCeiling, 0, characterHeight, 0, 0, 1, @colors.white, =>
-        @debug()
+        # @debug()
       @renderCount aiPlayers[0], aiPlayers[0].index == @thirteen.turn, countHeight, characterMargin + (characterWidth / 2), @charCeiling - textPadding, 0.5, 0
 
     # top side
@@ -492,6 +512,7 @@ class Game
       xText = x + (@width * 0.06)
       @spriteRenderer.render "au", x, y, 0, @height / 10, 0, 0, 0, color, =>
         @achievementFanfare = null
+        @renderMode = 2
       @fontRenderer.render @font, textHeight, "Achievement Earned", xText, y, 0, 0, color
       @fontRenderer.render @font, textHeight, @achievementFanfare.title, xText, y + textHeight, 0, 0, color
 
