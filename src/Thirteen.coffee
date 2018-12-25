@@ -694,12 +694,13 @@ class Thirteen
       else
         @output("#{currentPlayer.name} wins!")
 
-      if (@turn == 0) and (currentPlayer.place == 1)
-        @streak += 1
-        @lastStreak = @streak
-      else
-        @lastStreak = @streak
-        @streak = 0
+      if currentPlayer.place == 1
+        if @turn == 0
+          @streak += 1
+          @lastStreak = @streak
+        else
+          @lastStreak = @streak
+          @streak = 0
 
       @ach.state.bestStreak ?= 0
       if @ach.state.bestStreak < @lastStreak
