@@ -127,18 +127,21 @@ class NativeApp
     now = new Date().getTime()
     dt = now - @lastTime
 
+    # dt = Math.floor(dt / 100)
+
     timeSinceInteract = now - @lastInteractTime
-    if timeSinceInteract > 5000
-      goalFPS = 5 # calm down, nobody is doing anything for 5 seconds
+    if timeSinceInteract > 15000
+      goalFPS = 5 # calm down, nobody is doing anything for a while
     else
-      goalFPS = 200 # as fast as possible
+      goalFPS = null # as fast as possible
     if @lastGoalFPS != goalFPS
       console.log "switching to #{goalFPS} FPS"
       @lastGoalFPS = goalFPS
 
-    fpsInterval = 1000 / goalFPS
-    if dt < fpsInterval
-      return
+    if goalFPS != null
+      fpsInterval = 1000 / goalFPS
+      if dt < fpsInterval
+        return
     @lastTime = now
 
     @context.clearRect(0, 0, @width, @height)
