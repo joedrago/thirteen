@@ -8,7 +8,14 @@ Pile = require './Pile'
 {Thirteen, OK, aiCharacters, achievementsList} = require './Thirteen'
 
 # temp
-BUILD_TIMESTAMP = "1.0.9"
+BUILD_TIMESTAMP = "1.0.10"
+
+RenderMode =
+  GAME: 0
+  HOWTO: 1
+  ACHIEVEMENTS: 2
+  PAUSE: 3
+  OPTIONS: 4
 
 class Game
   constructor: (@native, @width, @height) ->
@@ -44,6 +51,7 @@ class Game
       orange:     { r:   1, g: 0.5, b:   0, a:   1 }
       overlay:    { r:   0, g:   0, b:   0, a: 0.6 }
       pausemenu:  { r: 0.1, g: 0.0, b: 0.1, a:   1 }
+      optionmenu: { r: 0.0, g: 0.1, b: 0.1, a:   1 }
       pile:       { r: 0.4, g: 0.2, b:   0, a:   1 }
       play_again: { r:   0, g:   0, b:   0, a: 0.6 }
       red:        { r:   1, g:   0, b:   0, a:   1 }
@@ -61,8 +69,7 @@ class Game
 
     @thirteen = null
     @lastErr = ''
-    @paused = false
-    @renderMode = 0 # 0 = game, 1 = howto, 2 = achievements. yes, I'm being lazy.
+    @renderMode = RenderMode.GAME
     @renderCommands = []
     @achievementFanfare = null
 
@@ -77,42 +84,63 @@ class Game
         { text: "Sort Order: Normal" }
         { text: "Sort Order: Reverse" }
       ]
+      autopasses: [
+        { text: "AutoPass: Disabled" }
+        { text: "AutoPass: Full" }
+        { text: "AutoPass: Limited" }
+      ]
     @options =
       speedIndex: 1
       sortIndex: 0
       sound: true
+      autopassIndex: 2
 
     @pauseMenu = new Menu this, "Paused", "solid", @colors.pausemenu, [
       (click) =>
         if click
-          @paused = false
+          @renderMode = RenderMode.GAME
         return "Resume Game"
       (click) =>
         if click
-          @renderMode = 2
+          @renderMode = RenderMode.OPTIONS
+        return "Options"
+      (click) =>
+        if click
+          @renderMode = RenderMode.ACHIEVEMENTS
         return "Achievements"
       (click) =>
         if click
-          @renderMode = 1
+          @renderMode = RenderMode.HOWTO
         return "How To Play"
       (click) =>
         if click
-          @options.sortIndex = (@options.sortIndex + 1) % @optionMenus.sorts.length
-        return @optionMenus.sorts[@options.sortIndex].text
+          @newGame(true)
+          @renderMode = RenderMode.GAME
+        return "New Money Game"
+      (click) =>
+        if click
+          @newGame(false)
+          @renderMode = RenderMode.GAME
+        return "New Game"
+    ]
+
+    @optionMenu = new Menu this, "Options", "solid", @colors.optionmenu, [
       (click) =>
         if click
           @options.speedIndex = (@options.speedIndex + 1) % @optionMenus.speeds.length
         return @optionMenus.speeds[@options.speedIndex].text
       (click) =>
         if click
-          @newGame(true)
-          @paused = false
-        return "New Money Game"
+          @options.autopassIndex = (@options.autopassIndex + 1) % @optionMenus.autopasses.length
+        return @optionMenus.autopasses[@options.autopassIndex].text
       (click) =>
         if click
-          @newGame(false)
-          @paused = false
-        return "New Game"
+          @options.sortIndex = (@options.sortIndex + 1) % @optionMenus.sorts.length
+        return @optionMenus.sorts[@options.sortIndex].text
+      (click) =>
+        if click
+          @renderMode = RenderMode.PAUSE
+        return "Back"
     ]
 
     @thirteen = new Thirteen this, {}
@@ -312,6 +340,9 @@ class Game
     if @pauseMenu.update(dt)
       updated = true
 
+    if @optionMenu.update(dt)
+      updated = true
+
     if @achievementFanfare != null
       @achievementFanfare.time += dt
       if @achievementFanfare.time > 5000
@@ -330,21 +361,32 @@ class Game
     # Reset render commands
     @renderCommands.length = 0
 
-    if @renderMode == 1
-      @renderHowto()
-    else if @renderMode == 2
-      @renderAchievements()
-    else
-      @renderGame()
+    switch @renderMode
+      when RenderMode.HOWTO
+        @renderHowto()
+      when RenderMode.ACHIEVEMENTS
+        @renderAchievements()
+      when RenderMode.OPTIONS
+        @renderOptions()
+      when RenderMode.PAUSE
+        @renderPause()
+      else
+        @renderGame()
 
     return @renderCommands
+
+  renderPause: ->
+    @pauseMenu.render()
+
+  renderOptions: ->
+    @optionMenu.render()
 
   renderHowto: ->
     howtoTexture = "howto1"
     @log "rendering #{howtoTexture}"
     @spriteRenderer.render "solid", 0, 0, @width, @height, 0, 0, 0, @colors.black
     @spriteRenderer.render howtoTexture, 0, 0, @width, @aaHeight, 0, 0, 0, @colors.white, =>
-      @renderMode = 0
+      @renderMode = RenderMode.PAUSE
 
   debug: ->
     console.log "debug ach"
@@ -368,7 +410,7 @@ class Game
 
   renderAchievements: ->
     @spriteRenderer.render "solid", 0, 0, @width, @height, 0, 0, 0, @colors.ach_bg, =>
-      @renderMode = 0
+      @renderMode = RenderMode.PAUSE
 
     titleHeight = @height / 20
     titleOffset = titleHeight / 2
@@ -518,7 +560,7 @@ class Game
     @fontRenderer.render @font, textHeight, @calcHeadline(), 0, 0, 0, 0, @colors.lightgray
 
     @spriteRenderer.render "pause", @width, 0, 0, @pauseButtonSize, 0, 1, 0, @colors.white, =>
-      @paused = true
+      @renderMode = RenderMode.PAUSE
 
     if cardAreaText != null
       @fontRenderer.render @font, textHeight, cardAreaText, 0.02 * @width, @height - handAreaHeight, 0, 0, @colors.white
@@ -536,12 +578,9 @@ class Game
       xText = x + (@width * 0.06)
       @spriteRenderer.render "au", x, y, 0, @height / 10, 0, 0, 0, color, =>
         @achievementFanfare = null
-        @renderMode = 2
+        @renderMode = RenderMode.ACHIEVEMENTS
       @fontRenderer.render @font, textHeight, "Achievement Earned", xText, y, 0, 0, color
       @fontRenderer.render @font, textHeight, @achievementFanfare.title, xText, y + textHeight, 0, 0, color
-
-    if @paused
-      @pauseMenu.render()
 
     return
 

@@ -557,6 +557,10 @@ class Thirteen
     if (playToCardCount(currentPlay) > hand.length)
       return false
 
+    if @game.options.autopassIndex == 2
+      # limited, assume there's a play in there somewhere, if there's enough cards
+      return true
+
     leftovers = []
     plays = {}
     spl = @splitPlayType(currentPlay.type)
@@ -853,17 +857,18 @@ class Thirteen
 
     currentPlayer = @currentPlayer()
     if not currentPlayer.ai
-      if not @canThrowAnything()
-        if @currentPlay and (@currentPlay.type == 'kind1') and (@currentPlay.high >= 48) and @hasBreaker(currentPlayer.hand)
-          # do nothing, player can drop a breaker
-        else if @currentPlay and not @hasPlay(@currentPlay, currentPlayer.hand)
-          @aiLog("autopassing for player, no plays")
-          @aiPass(currentPlayer)
-          return true
-        else if currentPlayer.pass
-          @aiLog("autopassing for player")
-          @aiPass(currentPlayer)
-          return true
+      if @game.options.autopassIndex != 0 # Not disabled
+        if not @canThrowAnything()
+          if @currentPlay and (@currentPlay.type == 'kind1') and (@currentPlay.high >= 48) and @hasBreaker(currentPlayer.hand)
+            # do nothing, player can drop a breaker
+          else if @currentPlay and not @hasPlay(@currentPlay, currentPlayer.hand)
+            @aiLog("autopassing for player, no plays")
+            @aiPass(currentPlayer)
+            return true
+          else if currentPlayer.pass
+            @aiLog("autopassing for player")
+            @aiPass(currentPlayer)
+            return true
       return false
 
     character = aiCharacters[currentPlayer.charID]
@@ -1207,15 +1212,20 @@ debug = ->
 
   console.log "fullyPlayed: #{fullyPlayed} / #{totalAttempts}"
 
-# debug()
+#     H  D  C  S
+# 2: 51 49 48 47
+# A: 46 45 44 43
+# K: 42 41 40 39
+# Q: 38 37 36 35
+# J: 34 33 32 31
 
 debug2 = ->
   thir = new Thirteen()
   currentPlay =
     type: 'run3'
-    high: 40
+    high: 41
   hand = [
-    36, 41, 45
+    34, 37, 39, 42
   ]
   console.log thir.hasPlay(currentPlay, hand)
 
