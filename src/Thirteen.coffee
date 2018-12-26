@@ -854,7 +854,7 @@ class Thirteen
     currentPlayer = @currentPlayer()
     if not currentPlayer.ai
       if not @canThrowAnything()
-        if @currentPlay and (@currentPlay.type == 'kind1') and @hasBreaker(currentPlayer.hand)
+        if @currentPlay and (@currentPlay.type == 'kind1') and (@currentPlay.high >= 48) and @hasBreaker(currentPlayer.hand)
           # do nothing, player can drop a breaker
         else if @currentPlay and not @hasPlay(@currentPlay, currentPlayer.hand)
           @aiLog("autopassing for player, no plays")
