@@ -898,7 +898,7 @@ class Thirteen
 
     return hand
 
-  aiFindRuns: (hand, eachSize, size) ->
+  aiFindRuns: (hand, eachSize, size, preferStrongRuns = false) ->
     runs = []
 
     cards = hand.map (raw) -> new Card(raw)
@@ -909,8 +909,15 @@ class Thirteen
     for card in cards
       valueArrays[card.value].push(card)
 
-    lastStartingValue = 12 - size
-    for startingValue in [0..lastStartingValue]
+    if preferStrongRuns
+      firstStartingValue = 12 - size
+      lastStartingValue = 0
+      byAmount = -1
+    else
+      firstStartingValue = 0
+      lastStartingValue = 12 - size
+      byAmount = 1
+    for startingValue in [firstStartingValue..lastStartingValue] by byAmount
       runFound = true
       for offset in [0...size]
         if valueArrays[startingValue+offset].length < eachSize
@@ -932,10 +939,12 @@ class Thirteen
 
   aiCalcRuns: (hand, plays, smallRuns, singleSize = null) ->
     if singleSize != null
-        startSize = singleSize
-        endSize = singleSize
-        byAmount = 1
+      preferStrongRuns = true
+      startSize = singleSize
+      endSize = singleSize
+      byAmount = 1
     else
+      preferStrongRuns = false
       if smallRuns
         startSize = 3
         endSize = 12
@@ -945,7 +954,7 @@ class Thirteen
         endSize = 3
         byAmount = -1
     for runSize in [startSize..endSize] by byAmount
-      [runs, leftovers] = @aiFindRuns(hand, 1, runSize)
+      [runs, leftovers] = @aiFindRuns(hand, 1, runSize, preferStrongRuns)
       if runs.length > 0
         key = "run#{runSize}"
         plays[key] = runs
@@ -954,14 +963,16 @@ class Thirteen
     return hand
 
   aiCalcRops: (hand, plays, singleSize = null) ->
-    if singleSize == null
-      startSize = 3
-      endSize = 6
-    else
+    if singleSize != null
+      preferStrongRuns = true
       startSize = singleSize
       endSize = singleSize
+    else
+      preferStrongRuns = false
+      startSize = 3
+      endSize = 6
     for runSize in [startSize..endSize]
-      [rops, leftovers] = @aiFindRuns(hand, 2, runSize)
+      [rops, leftovers] = @aiFindRuns(hand, 2, runSize, preferStrongRuns)
       if rops.length > 0
         key = "rop#{runSize}"
         plays[key] = rops
@@ -1212,20 +1223,31 @@ debug = ->
 
   console.log "fullyPlayed: #{fullyPlayed} / #{totalAttempts}"
 
-#     H  D  C  S
-# 2: 51 49 48 47
-# A: 46 45 44 43
-# K: 42 41 40 39
-# Q: 38 37 36 35
-# J: 34 33 32 31
+#      H  D  C  S
+#  2: 51 50 49 48
+#  A: 47 46 45 44
+#  K: 43 42 41 40
+#  Q: 39 38 37 36
+#  J: 35 34 33 32
+# 10: 31 30 29 28
+#  9: 27 26 25 24
+#  8: 23 22 21 20
+#  7: 19 18 17 16
+#  6: 15 14 13 12
+#  5: 11 10  9  8
+#  4:  7  6  5  4
+#  3:  3  2  1  0
 
 debug2 = ->
-  thir = new Thirteen()
+  game =
+    options:
+      autopassIndex: 1
+  thir = new Thirteen(game)
   currentPlay =
     type: 'run3'
-    high: 41
+    high: 26
   hand = [
-    34, 37, 39, 42
+    10, 11, 15, 19, 23, 27
   ]
   console.log thir.hasPlay(currentPlay, hand)
 

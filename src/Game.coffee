@@ -8,7 +8,7 @@ Pile = require './Pile'
 {Thirteen, OK, aiCharacters, achievementsList} = require './Thirteen'
 
 # temp
-BUILD_TIMESTAMP = "1.0.10"
+BUILD_TIMESTAMP = "1.11"
 
 RenderMode =
   GAME: 0
