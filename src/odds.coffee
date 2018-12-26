@@ -28,6 +28,8 @@ handToString = ->
 prettyName = (key) ->
   if key == 'allFour2s'
     return "All Four 2s"
+  if key == 'tragedy'
+    return "Tragedy Achievement"
 
   if matches = key.match("^([^0-9]+)([0-9]+)")
     switch matches[1]
@@ -54,6 +56,7 @@ prettyName = (key) ->
 makeStats = ->
   stats = {}
   stats.allFour2s = 0
+  stats.tragedy = 0
   for kind in [2..4]
     key = "kind" + kind
     stats[key] = 0
@@ -83,11 +86,14 @@ loop
       return a - b
     handsSeen += 1
 
+    has0 = false
     valuesSeen = new Array(13).fill(0)
     for card in hand
       suit  = Math.floor(card % 4)
       value = Math.floor(card / 4)
       valuesSeen[value] += 1
+      if card == 0
+        has0 = true
 
     handStats = makeStats()
 
@@ -132,6 +138,8 @@ loop
         if currentRun >= len
           key = "rop" + len
           handStats[key] = 1
+          if (startingPos == 0) and has0
+            handStats.tragedy += 1
 
     # look for rots
     biggestRun = 0
@@ -164,7 +172,7 @@ loop
           handStats[key] = 1
 
     # DEBUG!
-    # if handStats.allFour2s > 0
+    # if handStats.tragedy > 0
     #   console.log handToString(hand)
     #   process.exit(0)
 
