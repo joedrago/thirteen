@@ -108,7 +108,8 @@ class Pile
         anim.req.s = @scale
 
   readyForNextTrick: ->
-    return (@settleTimer == 0)
+    return @resting()
+    # return (@settleTimer == 0)
 
   update: (dt) ->
     updated = false
