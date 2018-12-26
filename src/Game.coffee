@@ -8,7 +8,7 @@ Pile = require './Pile'
 {Thirteen, OK, aiCharacters, achievementsList} = require './Thirteen'
 
 # temp
-BUILD_TIMESTAMP = "1.0.7"
+BUILD_TIMESTAMP = "1.0.8"
 
 class Game
   constructor: (@native, @width, @height) ->
@@ -400,6 +400,11 @@ class Game
       else
         y += titleHeight * 3
 
+  renderAIHand: (hand, x, y, offset) ->
+    sorted = hand.sort (a, b) -> a - b
+    for raw, i in sorted
+      @hand.renderCard raw, x + (i * offset), y, 0, 0.7, 0
+
   renderGame: ->
 
     # background
@@ -425,8 +430,13 @@ class Game
     characterMargin = characterHeight / 2
     @charCeiling = @height * 0.6
 
+    aiCardSpacing = @width * 0.015
+
     # left side
     if aiPlayers[0] != null
+      if drawGameOver
+        @renderAIHand aiPlayers[0].hand, @width * 0.2, @height * 0.62, aiCardSpacing
+
       character = aiCharacters[aiPlayers[0].charID]
       characterWidth = @spriteRenderer.calcWidth(character.sprite, characterHeight)
       @spriteRenderer.render character.sprite, characterMargin, @charCeiling, 0, characterHeight, 0, 0, 1, @colors.white, =>
@@ -435,12 +445,18 @@ class Game
 
     # top side
     if aiPlayers[1] != null
+      if drawGameOver
+        @renderAIHand aiPlayers[1].hand, @width * 0.6, @height * 0.18, aiCardSpacing
+
       character = aiCharacters[aiPlayers[1].charID]
       @spriteRenderer.render character.sprite, @center.x, 0, 0, characterHeight, 0, 0.5, 0, @colors.white
       @renderCount aiPlayers[1], @thirteen.money, drawGameOver, aiPlayers[1].index == @thirteen.turn, countHeight, @center.x, characterHeight, 0.5, 0
 
     # right side
     if aiPlayers[2] != null
+      if drawGameOver
+        @renderAIHand aiPlayers[2].hand, @width * 0.7, @height * 0.62, aiCardSpacing
+
       character = aiCharacters[aiPlayers[2].charID]
       characterWidth = @spriteRenderer.calcWidth(character.sprite, characterHeight)
       @spriteRenderer.render character.sprite, @width - characterMargin, @charCeiling, 0, characterHeight, 0, 1, 1, @colors.white
