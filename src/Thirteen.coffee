@@ -905,7 +905,7 @@ class Thirteen
       valueArrays[card.value].push(card)
 
     lastStartingValue = 12 - size
-    for startingValue in [0...lastStartingValue]
+    for startingValue in [0..lastStartingValue]
       runFound = true
       for offset in [0...size]
         if valueArrays[startingValue+offset].length < eachSize
@@ -1208,6 +1208,20 @@ debug = ->
   console.log "fullyPlayed: #{fullyPlayed} / #{totalAttempts}"
 
 # debug()
+
+debug2 = ->
+  thir = new Thirteen()
+  currentPlay =
+    type: 'run3'
+    high: 40
+  hand = [
+    36, 41, 45
+  ]
+  console.log thir.hasPlay(currentPlay, hand)
+
+
+# debug()
+# debug2()
 
 # ---------------------------------------------------------------------------------------------------------------------------
 # Exports

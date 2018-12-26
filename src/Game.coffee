@@ -8,7 +8,7 @@ Pile = require './Pile'
 {Thirteen, OK, aiCharacters, achievementsList} = require './Thirteen'
 
 # temp
-BUILD_TIMESTAMP = "1.0.6"
+BUILD_TIMESTAMP = "1.0.7"
 
 class Game
   constructor: (@native, @width, @height) ->
