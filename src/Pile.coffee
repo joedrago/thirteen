@@ -1,7 +1,7 @@
 Animation = require './Animation'
 Hand = require './Hand'
 
-SETTLE_MS = 500
+SETTLE_MS = 250
 
 class Pile
   constructor: (@game, @hand) ->
