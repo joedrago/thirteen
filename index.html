@@ -66,9 +66,21 @@ if(isMobile.any()) {
         window.location.reload();
     }
 
-    if(window.innerHeight > window.innerWidth) {
-        document.getElementById("screen").style.display = "none";
-        document.getElementById("portrait").style.display = "block";
+    var allowPortrait = false;
+    var querystring = window.location.search;
+    if(!querystring) {
+        querystring = "";
+    }
+    var matches = querystring.match(/portrait/);
+    if (matches) {
+        allowPortrait = true;
+    }
+
+    if(!allowPortrait) {
+        if(window.innerHeight > window.innerWidth) {
+            document.getElementById("screen").style.display = "none";
+            document.getElementById("portrait").style.display = "block";
+        }
     }
 }
 </script>
