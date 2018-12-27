@@ -1,7 +1,7 @@
 Animation = require './Animation'
 Hand = require './Hand'
 
-SETTLE_MS = 1000
+SETTLE_MS = 500
 
 class Pile
   constructor: (@game, @hand) ->
@@ -58,6 +58,9 @@ class Pile
     #   @thrownTaker = thrownTaker
 
     @syncAnims()
+
+  poke: ->
+    @settleTimer = SETTLE_MS
 
   hint: (cards) ->
     for card in cards

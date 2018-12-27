@@ -812,6 +812,7 @@ class Thirteen
       @output("#{currentPlayer.name} passes")
     currentPlayer.pass = true
     @turn = @playerAfter(@turn)
+    @game.pile.poke()
     return OK
 
   aiPlay: (currentPlayer, cards) ->

@@ -130,7 +130,7 @@ class NativeApp
     # dt = Math.floor(dt / 100)
 
     timeSinceInteract = now - @lastInteractTime
-    if timeSinceInteract > 15000
+    if timeSinceInteract > 5000
       goalFPS = 5 # calm down, nobody is doing anything for a while
     else
       goalFPS = null # as fast as possible
@@ -145,7 +145,8 @@ class NativeApp
     @lastTime = now
 
     @context.clearRect(0, 0, @width, @height)
-    @game.update(dt)
+    if @game.update(dt)
+      @lastInteractTime = now
     renderCommands = @game.render()
 
     i = 0
