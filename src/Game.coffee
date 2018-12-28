@@ -8,7 +8,7 @@ Pile = require './Pile'
 {Thirteen, OK, aiCharacters, achievementsList} = require './Thirteen'
 
 # temp
-BUILD_TIMESTAMP = "1.13"
+BUILD_TIMESTAMP = "1.14"
 
 RenderMode =
   GAME: 0
@@ -43,7 +43,8 @@ class Game
       gold:       { r:   1, g:   1, b:   0, a:   1 }
       hand_any:   { r:   0, g:   0, b: 0.2, a: 1.0 }
       hand_pick:  { r:   0, g: 0.1, b:   0, a: 1.0 }
-      hand_reorg: { r: 0.4, g:   0, b:   0, a: 1.0 }
+      hand_drag:  { r: 0.4, g:   0, b:   0, a: 1.0 }
+      hand_push:  { r: 0.2, g:   0, b: 0.2, a: 1.0 }
       lightgray:  { r: 0.5, g: 0.5, b: 0.5, a:   1 }
       logbg:      { r: 0.1, g:   0, b:   0, a:   1 }
       logcolor:   { r: 0.5, g: 0.5, b: 0.5, a:   1 }
@@ -94,6 +95,7 @@ class Game
       sortIndex: 0
       sound: true
       autopassIndex: 2
+      pushSorting: false
 
     @pauseMenu = new Menu this, "Paused", "solid", @colors.pausemenu, [
       (click) =>
@@ -137,6 +139,12 @@ class Game
         if click
           @options.sortIndex = (@options.sortIndex + 1) % @optionMenus.sorts.length
         return @optionMenus.sorts[@options.sortIndex].text
+      (click) =>
+        if click
+          @options.pushSorting = !@options.pushSorting
+        if @options.pushSorting
+          return "Push Sorting: Enabled"
+        return "Push Sorting: Disabled"
       (click) =>
         if click
           @renderMode = RenderMode.PAUSE
@@ -298,13 +306,12 @@ class Game
       @pile.hint cards
 
   playPicked: ->
-    if not @hand.picking
+    if not @hand.picking()
       return
     cards = @hand.selectedCards()
     # @hand.selectNone()
     if cards.length == 0
       return @pass()
-    # @hand.togglePicking()
     return @play(cards)
 
   # -----------------------------------------------------------------------------------------------------
@@ -507,19 +514,23 @@ class Game
     # card area
     handAreaHeight = 0.27 * @height
     cardAreaText = null
-    if @hand.picking
-      handareaColor = @colors.hand_pick
-      if (@thirteen.turn == 0) and (@thirteen.everyonePassed() or (@thirteen.currentPlay == null))
-        handareaColor = @colors.hand_any
-        if @thirteen.pile.length == 0
-          cardAreaText = 'Anything (3\xc8)'
-        else
-          cardAreaText = 'Anything'
-    else
-      cardAreaText = 'Unlocked'
-      handareaColor = @colors.hand_reorg
+    switch @hand.mode
+      when Hand.PICKING
+        handareaColor = @colors.hand_pick
+        if (@thirteen.turn == 0) and (@thirteen.everyonePassed() or (@thirteen.currentPlay == null))
+          handareaColor = @colors.hand_any
+          if @thirteen.pile.length == 0
+            cardAreaText = 'Anything (3\xc8)'
+          else
+            cardAreaText = 'Anything'
+      when Hand.PUSHING
+        handareaColor = @colors.hand_push
+        cardAreaText = 'Sorting'
+      else
+        cardAreaText = 'Dragging'
+        handareaColor = @colors.hand_drag
     @spriteRenderer.render "solid", 0, @height, @width, handAreaHeight, 0, 0, 1, handareaColor, =>
-      @hand.togglePicking()
+      @hand.cycleMode()
 
     # pile
     pileDimension = @height * 0.4

@@ -44,12 +44,16 @@ class Hand
   @CARD_RENDER_SCALE: CARD_RENDER_SCALE
   @Highlight: Highlight
 
+  @PICKING: 0
+  @DRAGGING: 1
+  @PUSHING: 2
+
   constructor: (@game) ->
     @cards = []
     @anims = {}
     @positionCache = {}
 
-    @picking = true
+    @mode = Hand.PICKING
     @picked = []
     @pickPaint = false
 
@@ -78,9 +82,21 @@ class Hand
     @handAngleAdvanceMax = @handAngle / 7 # never space the cards more than what they'd look like with this handsize
     @game.log "Hand distance #{@handDistance}, angle #{@handAngle} (screen height #{@game.height})"
 
-  togglePicking: ->
-    @picking = !@picking
-    if @picking
+  picking: ->
+    return (@mode == Hand.PICKING)
+
+  cycleMode: ->
+    @mode = switch @mode
+      when Hand.PICKING
+        Hand.DRAGGING
+      when Hand.DRAGGING
+        if @game.options.pushSorting
+          Hand.PUSHING
+        else
+          Hand.PICKING
+      when Hand.PUSHING
+        Hand.PICKING
+    if @mode == Hand.PICKING
       @selectNone()
 
   selectNone: ->
@@ -89,7 +105,7 @@ class Hand
 
   set: (cards) ->
     @cards = cards.slice(0)
-    if @picking
+    if @mode == Hand.PICKING
       @selectNone()
     @syncAnims()
     @warp()
@@ -174,7 +190,7 @@ class Hand
     @dragIndexCurrent = closestIndex
 
   selectedCards: ->
-    if not @picking
+    if @mode != Hand.PICKING
       return []
 
     cards = []
@@ -192,9 +208,16 @@ class Hand
 
   down: (@dragX, @dragY, index) ->
     @up(@dragX, @dragY) # ensure we let go of the previous card in case the events are dumb
-    if @picking
+    if @mode == Hand.PICKING
       @picked[index] = !@picked[index]
       @pickPaint = @picked[index]
+      return
+    if @mode == Hand.PUSHING
+      if index < @cards.length
+        toEnd = @cards[index]
+        @cards.splice(index, 1)
+        @cards.push toEnd
+        @updatePositions()
       return
     @game.log "picking up card index #{index}"
     @dragIndexStart = index
@@ -246,7 +269,7 @@ class Hand
       continue if v == NO_CARD
       anim = @anims[v]
       do (anim, index) =>
-        if @picking
+        if @mode == Hand.PICKING
           if @picked[index]
             highlightState = Highlight.SELECTED
           else
