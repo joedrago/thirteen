@@ -13,8 +13,6 @@ SuitName = ['Spades', 'Clubs', 'Diamonds', 'Hearts']
 ShortSuitName = ['S', 'C', 'D', 'H']
 GlyphSuitName = ["\xc8", "\xc9", "\xca", "\xcb"]
 
-STARTING_MONEY = 25
-
 # ---------------------------------------------------------------------------------------------------------------------------
 # AI Name Generator
 
@@ -205,6 +203,8 @@ for e in achievementsList
 # Thirteen
 
 class Thirteen
+  @STARTING_MONEY: 25
+
   constructor: (@game, params) ->
     return if not params
 
@@ -282,7 +282,7 @@ class Thirteen
     console.log "for money: #{@money}"
 
     @players = [
-      { id: 1, name: 'Player', index: 0, pass: false, money: STARTING_MONEY }
+      { id: 1, name: 'Player', index: 0, pass: false, money: Thirteen.STARTING_MONEY }
     ]
 
     for i in [1...4]
@@ -423,7 +423,7 @@ class Thirteen
       id: 'ai' + String(@players.length)
       pass: false
       ai: true
-      money: STARTING_MONEY
+      money: Thirteen.STARTING_MONEY
 
     @addPlayer(ai)
 
@@ -439,6 +439,16 @@ class Thirteen
       if player.place == 1
         return player
     return null
+
+  someoneGaveUp: ->
+    if not @money
+      return false
+    if not @game.options.givingUp
+      return false
+    for player in @players
+      if player.money <= 0
+        return true
+    return false
 
   gameOver: ->
     np = @nextPlace()
@@ -747,6 +757,12 @@ class Thirteen
 
         if currentPlayer.place == 3
           @payout()
+
+          if @game.options.givingUp
+            for player in @players
+              if player.money <= 0
+                @output("#{player.name} gives up")
+
       else
         @output("#{currentPlayer.name} wins!")
 

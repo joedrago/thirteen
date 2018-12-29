@@ -8,7 +8,7 @@ Pile = require './Pile'
 {Thirteen, OK, aiCharacters, achievementsList} = require './Thirteen'
 
 # temp
-BUILD_TIMESTAMP = "1.14"
+BUILD_TIMESTAMP = "1.15"
 
 RenderMode =
   GAME: 0
@@ -96,6 +96,7 @@ class Game
       sound: true
       autopassIndex: 2
       pushSorting: false
+      givingUp: true
 
     @pauseMenu = new Menu this, "Paused", "solid", @colors.pausemenu, [
       (click) =>
@@ -139,6 +140,12 @@ class Game
         if click
           @options.sortIndex = (@options.sortIndex + 1) % @optionMenus.sorts.length
         return @optionMenus.sorts[@options.sortIndex].text
+      (click) =>
+        if click
+          @options.givingUp = !@options.givingUp
+        if @options.givingUp
+          return "Giving Up: Enabled"
+        return "Giving Up: Disabled"
       (click) =>
         if click
           @options.pushSorting = !@options.pushSorting
@@ -272,13 +279,29 @@ class Game
 
   gameOverText: ->
     winner = @thirteen.winner()
+    firstLine = "#{winner.name} wins!"
+    secondLine = "Try Again..."
     if winner.name == "Player"
+      firstLine = "You win!"
       if @thirteen.lastStreak == 1
-        return ["You win!", "A new streak!"]
-      return ["You win!", "#{@thirteen.lastStreak} in a row!"]
-    if @thirteen.lastStreak == 0
-      return ["#{winner.name} wins!", "Try again..."]
-    return ["#{winner.name} wins!", "Streak ended: #{@thirteen.lastStreak} wins"]
+        secondLine = "A new streak!"
+      else
+        secondLine = "#{@thirteen.lastStreak} in a row!"
+    else
+      if @thirteen.lastStreak == 0
+        secondLine = "Try again..."
+      else
+        secondLine = "Streak ended: #{@thirteen.lastStreak} wins"
+    if @thirteen.someoneGaveUp()
+      moneyDelta = @thirteen.players[0].money - Thirteen.STARTING_MONEY
+      if moneyDelta > 0
+        secondLine = "Game Over: You won $#{moneyDelta}"
+      else if moneyDelta < 0
+        secondLine = "Game Over: You lost $#{-1 * moneyDelta}"
+      else
+        secondLine = "Game Over: You broke even!"
+    return [firstLine, secondLine]
+
   # -----------------------------------------------------------------------------------------------------
   # card handling
 
@@ -556,14 +579,20 @@ class Game
         gameOverY += gameOverSize
         @fontRenderer.render @font, gameOverSize, lines[1], @center.x, gameOverY, 0.5, 0.5, @colors.game_over
 
+      playAgainText = "Play Again"
+      if @thirteen.someoneGaveUp()
+        playAgainText = "New Money Game"
       @spriteRenderer.render "solid", 0, @height, @width, handAreaHeight, 0, 0, 1, @colors.play_again, =>
-        @thirteen.deal()
+        if @thirteen.someoneGaveUp()
+          @thirteen.newGame(true)
+        else
+          @thirteen.deal()
         @prepareGame()
 
       restartQuitSize = @aaHeight / 12
       shadowDistance = restartQuitSize / 8
-      @fontRenderer.render @font, restartQuitSize, "Play Again", shadowDistance + @center.x, shadowDistance + (@height - (handAreaHeight * 0.5)), 0.5, 1, @colors.black
-      @fontRenderer.render @font, restartQuitSize, "Play Again", @center.x, @height - (handAreaHeight * 0.5), 0.5, 1, @colors.gold
+      @fontRenderer.render @font, restartQuitSize, playAgainText, shadowDistance + @center.x, shadowDistance + (@height - (handAreaHeight * 0.5)), 0.5, 1, @colors.black
+      @fontRenderer.render @font, restartQuitSize, playAgainText, @center.x, @height - (handAreaHeight * 0.5), 0.5, 1, @colors.gold
 
     @renderCount @thirteen.players[0], @thirteen.money, drawGameOver, 0 == @thirteen.turn, countHeight, @center.x, @height, 0.5, 1
 
