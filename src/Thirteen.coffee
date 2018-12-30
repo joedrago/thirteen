@@ -271,11 +271,15 @@ class Thirteen
   # ---------------------------------------------------------------------------------------------------------------------------
   # Thirteen methods
 
-  newGame: (money = false) ->
+  newGame: (money = false, keepStreak = false) ->
     # new game
     @log = []
-    @streak = 0
-    @lastStreak = 0
+    if keepStreak
+      @streak ?= 0
+      @lastStreak ?= 0
+    else
+      @streak = 0
+      @lastStreak = 0
     @money = false
     if money
       @money = true

@@ -584,7 +584,7 @@ class Game
         playAgainText = "New Money Game"
       @spriteRenderer.render "solid", 0, @height, @width, handAreaHeight, 0, 0, 1, @colors.play_again, =>
         if @thirteen.someoneGaveUp()
-          @thirteen.newGame(true)
+          @thirteen.newGame(true, true) # special case: allow you to keep your streaks going
         else
           @thirteen.deal()
         @prepareGame()
