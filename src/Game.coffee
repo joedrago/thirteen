@@ -8,7 +8,7 @@ Pile = require './Pile'
 {Thirteen, OK, aiCharacters, achievementsList} = require './Thirteen'
 
 # temp
-BUILD_TIMESTAMP = "1.16"
+BUILD_TIMESTAMP = "1.17"
 
 RenderMode =
   GAME: 0
@@ -61,6 +61,8 @@ class Game
       ach_header: { r:   1, g: 0.5, b:   0, a:   1 }
       ach_title:  { r:   1, g:   1, b:   1, a:   1 }
       ach_desc:   { r: 0.7, g: 0.7, b: 0.7, a:   1 }
+      ach_button: { r: 0.7, g: 0.7, b: 0.3, a:   1 }
+      transparent:{ r:   1, g:   1, b:   1, a:   0 }
 
     @textures =
       "cards": 0
@@ -73,6 +75,7 @@ class Game
     @renderMode = RenderMode.GAME
     @renderCommands = []
     @achievementFanfare = null
+    @achievementsPage = 0
 
     @optionMenus =
       speeds: [
@@ -442,9 +445,24 @@ class Game
     @spriteRenderer.render "solid", 0, 0, @width, @height, 0, 0, 0, @colors.ach_bg, =>
       @renderMode = RenderMode.PAUSE
 
+    achievementsCount = achievementsList.length
+    achievementsPageCount = Math.ceil(achievementsCount / 14)
+    achievementsEarned = 0
+    for ach, achIndex in achievementsList
+      if @thirteen.ach.earned[ach.id]
+        achievementsEarned += 1
+
+    titleText = "Achievements - #{achievementsEarned} / #{achievementsCount} Complete - Page #{@achievementsPage + 1} of #{achievementsPageCount}"
+
     titleHeight = @height / 20
     titleOffset = titleHeight / 2
-    @fontRenderer.render @font, titleHeight, "Achievements", @center.x, titleOffset, 0.5, 0.5, @colors.ach_header
+    @fontRenderer.render @font, titleHeight, titleText, @center.x, titleOffset, 0.5, 0.5, @colors.ach_header
+
+    if achievementsPageCount > 1
+      nextDim = @width * 0.1
+      @fontRenderer.render @font, titleHeight, "[ Next ]", @width, titleOffset, 1, 0.5, @colors.ach_button
+      @spriteRenderer.render "solid", @width - nextDim, 0, nextDim, nextDim, 0, 0, 0, @colors.transparent, =>
+        @achievementsPage = (@achievementsPage + 1) % achievementsPageCount
 
     imageMargin = @width / 15
     topHeight = titleHeight
@@ -453,7 +471,13 @@ class Game
     titleHeight = @height / 22
     descHeight = @height / 30
     imageDim = titleHeight * 2
-    for ach, achIndex in achievementsList
+    startAchIndex = @achievementsPage * 14
+    endAchIndex = startAchIndex + 14
+    if endAchIndex > (achievementsList.length - 1)
+      endAchIndex = achievementsList.length - 1
+    for achIndex in [startAchIndex..endAchIndex]
+      achScreenIndex = achIndex - startAchIndex
+      ach = achievementsList[achIndex]
       icon = "star_off"
       if @thirteen.ach.earned[ach.id]
         icon = "star_on"
@@ -466,7 +490,7 @@ class Game
       else
         if ach.description.length > 1
           @fontRenderer.render @font, descHeight, ach.description[1], x + imageMargin, y + titleHeight + descHeight, 0, 0, @colors.ach_desc
-      if achIndex == 6
+      if achScreenIndex == 6
         y = topHeight
         x += @width / 2
       else
