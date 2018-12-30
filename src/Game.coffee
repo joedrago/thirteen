@@ -8,7 +8,7 @@ Pile = require './Pile'
 {Thirteen, OK, aiCharacters, achievementsList} = require './Thirteen'
 
 # temp
-BUILD_TIMESTAMP = "1.17"
+BUILD_TIMESTAMP = "1.18"
 
 RenderMode =
   GAME: 0
@@ -31,7 +31,7 @@ class Game
       y: @height / 2
     @aaHeight = @width * 9 / 16
     @log "height: #{@height}. height if screen was 16:9 (aspect adjusted): #{@aaHeight}"
-    @pauseButtonSize = @aaHeight / 15
+    @pauseButtonSize = @aaHeight / 12
     @colors =
       arrow:      { r:   1, g:   1, b:   1, a:   1 }
       arrowclose: { r:   1, g: 0.5, b:   0, a: 0.3 }
