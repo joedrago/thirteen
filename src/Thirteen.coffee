@@ -234,6 +234,16 @@ achievementsList = [
   }
 
   {
+    id: "consolationprize"
+    title: "Consolation Prize"
+    description: ["Lose 10 Hands spectacularly (10+ cards left)."]
+    progress: (ach) ->
+      if ach.state.spectacularLosses >= 10
+        return "Total: `aaffaa`#{ach.state.spectacularLosses}`` Bad Beats"
+      return "Progress: #{ach.state.spectacularLosses} / 10"
+  }
+
+  {
     id: "bling"
     title: "Bling Bling"
     description: ["Bankrupt another player in a money game when", "you are ahead by $15 dollars or more ($#{STARTING_MONEY+15} total)."]
@@ -270,6 +280,12 @@ achievementsList = [
   }
 
   {
+    id: "palindrome"
+    title: "Palindrome"
+    description: ["Throw a run of pairs... but in a reversible way."]
+  }
+
+  {
     id: "pagercode"
     title: "Pager Code"
     description: ["The secret password is BATHES. Don't tell anyone."]
@@ -303,6 +319,7 @@ class Thirteen
     @ach.state ?= {}
     @ach.state.totalGames ?= 0
     @ach.state.totalWins ?= 0
+    @ach.state.spectacularLosses ?= 0
     @fanfares = []
 
   deal: (params) ->
@@ -642,6 +659,18 @@ class Thirteen
         return true
     return false
 
+  handIsReversible: (hand) ->
+    if hand.length == 0
+      return false
+    cards = hand.map (raw) -> new Card(raw)
+    # do not sort!
+    expecting = cards.map (card) -> card.value
+    expecting = expecting.reverse()
+    for card, index in cards
+      if card.value != expecting[index]
+        return false
+    return true
+
   handIsBATHES: (hand) ->
     if hand.length != 6
       return false
@@ -858,6 +887,8 @@ class Thirteen
         @earn "ballet"
       if @handIsBATHES(params.cards)
         @earn "pagercode"
+      if (incomingPlay.type.match(/rop/)) and (@handIsReversible(params.cards))
+        @earn "palindrome"
 
     @currentPlay = incomingPlay
 
@@ -935,6 +966,10 @@ class Thirteen
           # player lost
           if @ach.state.threwRun7
             @earn "tony"
+          if (@players[0].hand.length >= 10)
+            @ach.state.spectacularLosses += 1
+            if @ach.state.spectacularLosses >= 10
+              @earn "consolationprize"
 
     achievementCount = 0
     for achievement in achievementsList
