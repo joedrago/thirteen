@@ -8,7 +8,7 @@ Pile = require './Pile'
 {Thirteen, OK, aiCharacters, achievementsList} = require './Thirteen'
 
 # temp
-BUILD_TIMESTAMP = "1.18"
+BUILD_TIMESTAMP = "1.19"
 
 RenderMode =
   GAME: 0
@@ -76,6 +76,10 @@ class Game
     @renderCommands = []
     @achievementFanfare = null
     @achievementsPage = 0
+
+    # achievements debugging
+    # @renderMode = RenderMode.ACHIEVEMENTS
+    # @achievementsPage = 1
 
     @optionMenus =
       speeds: [

@@ -2,6 +2,8 @@ MIN_PLAYERS = 3
 MAX_LOG_LINES = 6
 OK = 'OK'
 
+STARTING_MONEY = 25
+
 Suit =
   NONE: -1
   SPADES: 0
@@ -106,6 +108,21 @@ class ShuffledDeck
       @cards.push(@cards[j])
       @cards[j] = i
 
+    # @cards = [
+    #   0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+    #   13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+    #   26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
+    #   39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51
+    # ]
+
+    # @cards = [
+    #   0, 3, 7, 11, 15, 19, 23,
+    #   1, 2, 4, 5, 6, 8, 9, 10, 12,
+    #   13, 14, 16, 17, 18, 20, 21, 22, 24, 25,
+    #   26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
+    #   39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51
+    # ]
+
 # ---------------------------------------------------------------------------------------------------------------------------
 # Achievements
 
@@ -193,6 +210,60 @@ achievementsList = [
     title: "Thirteen"
     description: ["Earn 13 achievements."]
   }
+
+  # Page 2
+
+  {
+    id: "veteran2"
+    title: "Old Timer"
+    description: ["Play 1000 Hands."]
+    progress: (ach) ->
+      if ach.state.totalGames >= 1000
+        return "Total Played: `aaffaa`#{ach.state.totalGames}`` Games"
+      return "Progress: #{ach.state.totalGames} / 1000"
+  }
+
+  {
+    id: "bling"
+    title: "Bling Bling"
+    description: ["Bankrupt another player in a money game when", "you are ahead by $15 dollars ($#{STARTING_MONEY+15} total)."]
+  }
+
+  {
+    id: "keepthechange"
+    title: "Keep the Change"
+    description: ["Win a hand by throwing a single 3 last."]
+  }
+
+  {
+    id: "dragracing"
+    title: "Drag Racing"
+    description: ["Throw a play with the 3 of spades which makes", "all opponents pass."]
+  }
+
+  {
+    id: "handicapped"
+    title: "Handicapped"
+    description: ["Win with a hand without any twos."]
+  }
+
+  {
+    id: "solitaire"
+    title: "Solitaire"
+    description: ["Throw a run of 5 or more cards with alternating", "red and black colors."]
+  }
+
+  {
+    id: "ballet"
+    title: "Ballet"
+    description: ["Throw a pair of twos (two twos)."]
+  }
+
+  {
+    id: "pagercode"
+    title: "Pager Code"
+    description: ["The secret password is BATHES. Don't tell anyone."]
+  }
 ]
 
 achievementsMap = {}
@@ -203,7 +274,7 @@ for e in achievementsList
 # Thirteen
 
 class Thirteen
-  @STARTING_MONEY: 25
+  @STARTING_MONEY: STARTING_MONEY
 
   constructor: (@game, params) ->
     return if not params
@@ -254,6 +325,7 @@ class Thirteen
     @ach.state.fashionablyLate = false
     @ach.state.pairsThrown = 0
     @ach.state.bestStreak ?= 0
+    @ach.state.handicapped = not @handHas2(@players[0].hand)
 
     @pile = []
     @pileWho = -1
@@ -553,6 +625,40 @@ class Thirteen
         return true
     return false
 
+  handHas2: (hand) ->
+    for raw in hand
+      if raw >= 48
+        return true
+    return false
+
+  handIsBATHES: (hand) ->
+    if hand.length != 6
+      return false
+    cards = hand.map (raw) -> new Card(raw)
+    # do not sort!
+    expecting = [5, 3, 4, 1, 0, 2]
+    for card, index in cards
+      if card.value != expecting[index]
+        return false
+    return true
+
+  cardIsRed: (card) ->
+    if card.suit == Suit.DIAMONDS
+      return true
+    if card.suit == Suit.HEARTS
+      return true
+    return false
+
+  handAlternatesRedAndBlack: (hand) ->
+    cards = hand.map (raw) -> new Card(raw)
+    cards = cards.sort (a, b) -> return a.raw - b.raw
+    wantsRed = @cardIsRed(cards[0])
+    for card in cards
+      if wantsRed != @cardIsRed(card)
+        return false
+      wantsRed = !wantsRed
+    return true
+
   nextPlace: ->
     highestPlace = 0
     for player in @players
@@ -735,6 +841,12 @@ class Thirteen
         @ach.state.threwRun = true
       if @ach.state.threwSingle and @ach.state.threwPair and @ach.state.threwTrips and @ach.state.threwRun
         @earn "sampler"
+      if (params.cards.length >= 5) and @handAlternatesRedAndBlack(params.cards)
+        @earn "solitaire"
+      if (incomingPlay.type == 'kind2') and (incomingPlay.high >= 48)
+        @earn "ballet"
+      if @handIsBATHES(params.cards)
+        @earn "pagercode"
 
     @currentPlay = incomingPlay
 
@@ -766,6 +878,8 @@ class Thirteen
             for player in @players
               if player.money <= 0
                 @output("#{player.name} gives up")
+                if @players[0].money >= (Thirteen.STARTING_MONEY + 15)
+                  @earn "bling"
 
       else
         @output("#{currentPlayer.name} wins!")
@@ -788,6 +902,8 @@ class Thirteen
       @ach.state.totalGames += 1
       if @ach.state.totalGames >= 50
         @earn "veteran"
+      if @ach.state.totalGames >= 1000
+        @earn "veteran2"
       if currentPlayer.place == 1
         if @turn == 0
           # player won
@@ -795,6 +911,11 @@ class Thirteen
             @earn "rekt"
           if @ach.state.fashionablyLate
             @earn "late"
+          if @ach.state.handicapped
+            @earn "handicapped"
+          if (params.cards.length == 1) and (params.cards[0] < 4)
+            # threw a single 3 to end the round
+            @earn "keepthechange"
         else
           # player lost
           if @ach.state.threwRun7
@@ -833,6 +954,9 @@ class Thirteen
     currentPlayer.pass = true
     @turn = @playerAfter(@turn)
     @game.pile.poke()
+
+    if (@turn == 0) and @everyonePassed() and @handHas3S(@pile)
+      @earn "dragracing"
     return OK
 
   aiPlay: (currentPlayer, cards) ->
