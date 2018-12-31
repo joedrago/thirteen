@@ -224,6 +224,16 @@ achievementsList = [
   }
 
   {
+    id: "skilled"
+    title: "Skilled"
+    description: ["Win 50 Hands."]
+    progress: (ach) ->
+      if ach.state.totalWins >= 50
+        return "Total Wins: `aaffaa`#{ach.state.totalWins}`` Wins"
+      return "Progress: #{ach.state.totalWins} / 50"
+  }
+
+  {
     id: "bling"
     title: "Bling Bling"
     description: ["Bankrupt another player in a money game when", "you are ahead by $15 dollars or more ($#{STARTING_MONEY+15} total)."]
@@ -292,6 +302,7 @@ class Thirteen
     @ach.earned ?= {}
     @ach.state ?= {}
     @ach.state.totalGames ?= 0
+    @ach.state.totalWins ?= 0
     @fanfares = []
 
   deal: (params) ->
@@ -907,6 +918,10 @@ class Thirteen
       if currentPlayer.place == 1
         if @turn == 0
           # player won
+          @ach.state.totalWins ?= 0
+          @ach.state.totalWins += 1
+          if @ach.state.totalWins >= 50
+            @earn "skilled"
           if (@players[1].hand.length >= 10) and (@players[2].hand.length >= 10) and (@players[3].hand.length >= 10)
             @earn "rekt"
           if @ach.state.fashionablyLate
