@@ -226,7 +226,7 @@ achievementsList = [
   {
     id: "bling"
     title: "Bling Bling"
-    description: ["Bankrupt another player in a money game when", "you are ahead by $15 dollars ($#{STARTING_MONEY+15} total)."]
+    description: ["Bankrupt another player in a money game when", "you are ahead by $15 dollars or more ($#{STARTING_MONEY+15} total)."]
   }
 
   {
