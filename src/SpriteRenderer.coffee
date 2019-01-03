@@ -24,7 +24,9 @@ class SpriteRenderer
       pausemenu: { texture: "pausemenu", x: 0, y: 0, w: 1280, h: 720 }
 
       # howto
-      howto1:    { texture: "howto1",  x: 0, y:  0, w: 1920, h: 1080 }
+      how1:      { texture: "how1",    x: 0, y:  0, w: 1920, h: 1080 }
+      how2:      { texture: "how2",    x: 0, y:  0, w: 1920, h: 1080 }
+      how3:      { texture: "how3",    x: 0, y:  0, w: 1920, h: 1080 }
 
       au:        { texture: "chars", x: 540, y: 1079, w: 400, h:  80 }
       star_on:   { texture: "chars", x:  38, y: 1066, w: 190, h: 190 }

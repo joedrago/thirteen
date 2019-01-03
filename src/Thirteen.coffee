@@ -290,6 +290,24 @@ achievementsList = [
     title: "Pager Code"
     description: ["The secret password is BATHES. Don't tell anyone."]
   }
+
+  {
+    id: "beast"
+    title: "Number of the Beast"
+    description: ["Throw a 3-of-a-kind of 6s."]
+  }
+
+  {
+    id: "thirteen2"
+    title: "Thirteen 2: Electric Boogaloo"
+    description: ["Earn 13 x 2 (26) achievements."]
+  }
+
+  {
+    id: "toad"
+    title: "Nobody Likes You, Toad"
+    description: ["Punch Toad in the face."]
+  }
 ]
 
 achievementsMap = {}
@@ -472,6 +490,11 @@ class Thirteen
     place3.money += -1
     place4.money += -2
     return
+
+  punch: (character) ->
+    console.log "thirteen: punching #{character.id}"
+    if character.id == 'toad'
+      @earn "toad"
 
   # all INCLUDING the current player
   entireTablePassed: ->
@@ -885,6 +908,8 @@ class Thirteen
         @earn "solitaire"
       if (incomingPlay.type == 'kind2') and (incomingPlay.high >= 48)
         @earn "ballet"
+      if (incomingPlay.type == 'kind3') and (incomingPlay.high >= 12) and (incomingPlay.high <= 15)
+        @earn "beast"
       if @handIsBATHES(params.cards)
         @earn "pagercode"
       if (incomingPlay.type.match(/rop/)) and (@handIsReversible(params.cards))
@@ -977,6 +1002,8 @@ class Thirteen
         achievementCount += 1
     if achievementCount >= 13
       @earn "thirteen"
+    if achievementCount >= 26
+      @earn "thirteen2"
 
     @pile = params.cards.slice(0)
     @pileWho = @turn

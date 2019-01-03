@@ -8,7 +8,7 @@ Pile = require './Pile'
 {Thirteen, OK, aiCharacters, achievementsList} = require './Thirteen'
 
 # temp
-BUILD_TIMESTAMP = "1.21"
+BUILD_TIMESTAMP = "1.22"
 
 RenderMode =
   GAME: 0
@@ -68,7 +68,9 @@ class Game
       "cards": 0
       "darkforest": 1
       "chars": 2
-      "howto1": 3
+      "how1": 3
+      "how2": 4
+      "how3": 5
 
     @thirteen = null
     @lastErr = ''
@@ -76,6 +78,7 @@ class Game
     @renderCommands = []
     @achievementFanfare = null
     @achievementsPage = 0
+    @howtoPage = 0
 
     # achievements debugging
     # @renderMode = RenderMode.ACHIEVEMENTS
@@ -419,11 +422,22 @@ class Game
     @optionMenu.render()
 
   renderHowto: ->
-    howtoTexture = "howto1"
+    howtoPageCount = 3
+    howtoTexture = "how#{@howtoPage+1}"
     @log "rendering #{howtoTexture}"
-    @spriteRenderer.render "solid", 0, 0, @width, @height, 0, 0, 0, @colors.black
     @spriteRenderer.render howtoTexture, 0, 0, @width, @aaHeight, 0, 0, 0, @colors.white, =>
       @renderMode = RenderMode.PAUSE
+
+    footerText = "Page #{@howtoPage + 1} / 3"
+
+    titleHeight = @height / 20
+    titleOffset = titleHeight / 4
+    @fontRenderer.render @font, titleHeight, footerText, @width - titleOffset, @height - titleOffset, 1, 1, @colors.ach_header
+
+    nextDim = @width * 0.1
+    @fontRenderer.render @font, titleHeight, "[ Next ]", @width - titleOffset, titleOffset, 1, 0, @colors.ach_button
+    @spriteRenderer.render "solid", @width - nextDim, 0, nextDim, nextDim, 0, 0, 0, @colors.transparent, =>
+      @howtoPage = (@howtoPage + 1) % howtoPageCount
 
   debug: ->
     console.log "debug ach"
@@ -539,8 +553,10 @@ class Game
 
       character = aiCharacters[aiPlayers[0].charID]
       characterWidth = @spriteRenderer.calcWidth(character.sprite, characterHeight)
-      @spriteRenderer.render character.sprite, characterMargin, @charCeiling, 0, characterHeight, 0, 0, 1, @colors.white, =>
-        # @debug()
+      do (character) =>
+        @spriteRenderer.render character.sprite, characterMargin, @charCeiling, 0, characterHeight, 0, 0, 1, @colors.white, =>
+          @thirteen.punch(character)
+          # @debug()
       @renderCount aiPlayers[0], @thirteen.money, drawGameOver, aiPlayers[0].index == @thirteen.turn, countHeight, characterMargin + (characterWidth / 2), @charCeiling - textPadding, 0.5, 0
 
     # top side
@@ -549,7 +565,9 @@ class Game
         @renderAIHand aiPlayers[1].hand, @width * 0.6, @height * 0.18, aiCardSpacing
 
       character = aiCharacters[aiPlayers[1].charID]
-      @spriteRenderer.render character.sprite, @center.x, 0, 0, characterHeight, 0, 0.5, 0, @colors.white
+      do (character) =>
+        @spriteRenderer.render character.sprite, @center.x, 0, 0, characterHeight, 0, 0.5, 0, @colors.white, =>
+          @thirteen.punch(character)
       @renderCount aiPlayers[1], @thirteen.money, drawGameOver, aiPlayers[1].index == @thirteen.turn, countHeight, @center.x, characterHeight, 0.5, 0
 
     # right side
@@ -559,7 +577,9 @@ class Game
 
       character = aiCharacters[aiPlayers[2].charID]
       characterWidth = @spriteRenderer.calcWidth(character.sprite, characterHeight)
-      @spriteRenderer.render character.sprite, @width - characterMargin, @charCeiling, 0, characterHeight, 0, 1, 1, @colors.white
+      do (character) =>
+        @spriteRenderer.render character.sprite, @width - characterMargin, @charCeiling, 0, characterHeight, 0, 1, 1, @colors.white, =>
+          @thirteen.punch(character)
       @renderCount aiPlayers[2], @thirteen.money, drawGameOver, aiPlayers[2].index == @thirteen.turn, countHeight, @width - (characterMargin + (characterWidth / 2)), @charCeiling - textPadding, 0.5, 0
 
     # card area

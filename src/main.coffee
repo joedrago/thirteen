@@ -35,7 +35,9 @@ class NativeApp
       # characters / other
       "../images/chars.png"
       # help
-      "../images/howtoplay1.png"
+      "../images/how1.png"
+      "../images/how2.png"
+      "../images/how3.png"
     ]
 
     @game = new Game(this, @width, @height)
