@@ -107,6 +107,7 @@ class Game
       autopassIndex: 2
       pushSorting: false
       givingUp: true
+      passBreak: true
 
     @pauseMenu = new Menu this, "Paused", "solid", @colors.pausemenu, [
       (click) =>
@@ -156,6 +157,12 @@ class Game
         if @options.givingUp
           return "Giving Up: Enabled"
         return "Giving Up: Disabled"
+      (click) =>
+        if click
+          @options.passBreak = !@options.passBreak
+        if @options.passBreak
+          return "Pass Breaks: Enabled"
+        return "Pass Breaks: Disabled"
       (click) =>
         if click
           @options.pushSorting = !@options.pushSorting

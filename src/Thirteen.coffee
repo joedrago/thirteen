@@ -810,7 +810,7 @@ class Thirteen
 
     currentPlayer = @currentPlayer()
     if currentPlayer.pass
-      if @currentPlay and @canBeBroken(@currentPlay)
+      if @game.options.passBreak and @currentPlay and @canBeBroken(@currentPlay)
         if @isBreakerType(incomingPlay.type)
           return OK
         else
@@ -1353,7 +1353,7 @@ class Thirteen
       # normal
       play: (currentPlayer, currentPlay, everyonePassed) ->
         if currentPlayer.pass
-          if @canBeBroken(currentPlay) and @hasBreaker(currentPlayer.hand)
+          if @game.options.passBreak and @canBeBroken(currentPlay) and @hasBreaker(currentPlayer.hand)
             breakerPlays = @breakerPlays(currentPlayer.hand)
             for playType, playlist of breakerPlays
               if (playType.match(/^rop/) or (playType == 'kind4')) and (playlist.length > 0)
