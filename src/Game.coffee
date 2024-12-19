@@ -31,7 +31,7 @@ class Game
       y: @height / 2
     @aaHeight = @width * 9 / 16
     @log "height: #{@height}. height if screen was 16:9 (aspect adjusted): #{@aaHeight}"
-    @pauseButtonSize = @aaHeight / 12
+    @pauseButtonSize = @aaHeight / 6
     @colors =
       arrow:      { r:   1, g:   1, b:   1, a:   1 }
       arrowclose: { r:   1, g: 0.5, b:   0, a: 0.3 }
@@ -484,7 +484,7 @@ class Game
     @fontRenderer.render @font, titleHeight, titleText, @center.x, titleOffset, 0.5, 0.5, @colors.ach_header
 
     if achievementsPageCount > 1
-      nextDim = @width * 0.1
+      nextDim = @width * 0.2
       @fontRenderer.render @font, titleHeight, "[ Next ]", @width, titleOffset, 1, 0.5, @colors.ach_button
       @spriteRenderer.render "solid", @width - nextDim, 0, nextDim, nextDim, 0, 0, 0, @colors.transparent, =>
         @achievementsPage = (@achievementsPage + 1) % achievementsPageCount
